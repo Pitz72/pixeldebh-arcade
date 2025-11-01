@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { SpriteGenerator } from '../utils/SpriteGenerator';
 import { getLevelConfig, getEraName, type LevelConfig } from '../data/LevelData';
 import { SoundManager } from '../utils/SoundManager';
-import { LevelGenerator } from '../utils/LevelGenerator';
+import { LevelGenerator, type WallSegment } from '../utils/LevelGenerator';
 
 // Tipi di oggetti da collezione
 enum CollectibleType {
@@ -33,6 +33,8 @@ enum PowerUpType {
 export class GameScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
+  private wasd!: { up: Phaser.Input.Keyboard.Key; down: Phaser.Input.Keyboard.Key; left: Phaser.Input.Keyboard.Key; right: Phaser.Input.Keyboard.Key };
+  private isPaused: boolean = false;
   private collectibles!: Phaser.Physics.Arcade.Group;
   private enemies!: Phaser.Physics.Arcade.Group;
   private powerUps!: Phaser.Physics.Arcade.Group;
@@ -51,6 +53,7 @@ export class GameScene extends Phaser.Scene {
   private isInvincible: boolean = false;
   private hasShield: boolean = false;
   private soundManager!: SoundManager;
+  private wallSegments: WallSegment[] = [];
   private walls!: Phaser.Physics.Arcade.StaticGroup;
 
   constructor() {
@@ -99,14 +102,28 @@ export class GameScene extends Phaser.Scene {
 
     // Input
     this.cursors = this.input.keyboard!.createCursorKeys();
+    
+    // Aggiungi supporto WASD
+    this.wasd = {
+      up: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+      down: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+      left: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+      right: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D)
+    };
 
     // Collisioni
     this.setupCollisions();
 
-    // Pausa
+    // Pausa (toggle)
     this.input.keyboard?.on('keydown-P', () => {
-      this.scene.pause();
-      this.showPauseMenu();
+      if (this.isPaused) {
+        this.scene.resume();
+        this.isPaused = false;
+      } else {
+        this.scene.pause();
+        this.isPaused = true;
+        this.showPauseMenu();
+      }
     });
   }
 
@@ -132,11 +149,11 @@ export class GameScene extends Phaser.Scene {
 
   private createWalls() {
     const { width, height } = this.cameras.main;
-    const wallSegments = LevelGenerator.generateWalls(this.level, width, height);
+    this.wallSegments = LevelGenerator.generateWalls(this.level, width, height);
     
     // Calcola colore muri basato sul colore della griglia
     const wallColor = this.levelConfig.gridColor + 0x101010;
-    this.walls = LevelGenerator.createWallsInScene(this, wallSegments, wallColor);
+    this.walls = LevelGenerator.createWallsInScene(this, this.wallSegments, wallColor);
   }
 
   private createPlayer() {
@@ -162,22 +179,23 @@ export class GameScene extends Phaser.Scene {
 
     types.forEach(({ type, points, count }) => {
       for (let i = 0; i < count; i++) {
-        const x = Phaser.Math.Between(margin, width - margin);
-        const y = Phaser.Math.Between(margin + 50, height - margin);
+        const pos = LevelGenerator.findFreePosition(this.wallSegments, width, height, margin, 25);
         
-        const collectible = this.collectibles.create(x, y, type);
-        collectible.setData('points', points);
-        collectible.setData('type', type);
-        
-        // Animazione fluttuante
-        this.tweens.add({
-          targets: collectible,
-          y: collectible.y - 5,
-          duration: 1000,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Sine.easeInOut'
-        });
+        if (pos) {
+          const collectible = this.collectibles.create(pos.x, pos.y, type);
+          collectible.setData('points', points);
+          collectible.setData('type', type);
+          
+          // Animazione fluttuante
+          this.tweens.add({
+            targets: collectible,
+            y: collectible.y - 5,
+            duration: 1000,
+            yoyo: true,
+            repeat: -1,
+            ease: 'Sine.easeInOut'
+          });
+        }
       }
     });
 
@@ -201,16 +219,25 @@ export class GameScene extends Phaser.Scene {
 
     enemyTypes.forEach(({ type, speed, count }) => {
       for (let i = 0; i < count; i++) {
-        const x = Phaser.Math.Between(margin, width - margin);
-        const y = Phaser.Math.Between(margin + 50, height - margin);
+        const pos = LevelGenerator.findFreePosition(this.wallSegments, width, height, margin, 35);
         
-        const enemy = this.enemies.create(x, y, type);
-        enemy.setData('type', type);
-        enemy.setData('speed', speed);
-        
-        // Movimento base
-        if (count > 0) {
-          this.setupEnemyMovement(enemy, type);
+        if (pos) {
+          // Verifica distanza dal centro (spawn giocatore)
+          const distFromCenter = Math.sqrt(
+            Math.pow(pos.x - width / 2, 2) + 
+            Math.pow(pos.y - height / 2, 2)
+          );
+          
+          if (distFromCenter > 150) {
+            const enemy = this.enemies.create(pos.x, pos.y, type);
+            enemy.setData('type', type);
+            enemy.setData('speed', speed);
+            
+            // Movimento base
+            if (count > 0) {
+              this.setupEnemyMovement(enemy, type);
+            }
+          }
         }
       }
     });
@@ -323,9 +350,11 @@ export class GameScene extends Phaser.Scene {
       const types = [PowerUpType.COFFEE, PowerUpType.JOYSTICK, PowerUpType.BUBBLE, PowerUpType.CRT];
       const randomType = Phaser.Utils.Array.GetRandom(types);
       const { width, height } = this.cameras.main;
-      const x = Phaser.Math.Between(100, width - 100);
-      const y = Phaser.Math.Between(150, height - 100);
-      this.spawnPowerUp(randomType, x, y);
+      const pos = LevelGenerator.findFreePosition(this.wallSegments, width, height, 100, 25);
+      
+      if (pos) {
+        this.spawnPowerUp(randomType, pos.x, pos.y);
+      }
     }
   }
 
@@ -411,15 +440,16 @@ export class GameScene extends Phaser.Scene {
 
     this.player.setVelocity(0);
 
-    if (this.cursors.left.isDown) {
+    // Supporto frecce direzionali e WASD
+    if (this.cursors.left.isDown || this.wasd.left.isDown) {
       this.player.setVelocityX(-this.playerSpeed);
-    } else if (this.cursors.right.isDown) {
+    } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
       this.player.setVelocityX(this.playerSpeed);
     }
 
-    if (this.cursors.up.isDown) {
+    if (this.cursors.up.isDown || this.wasd.up.isDown) {
       this.player.setVelocityY(-this.playerSpeed);
-    } else if (this.cursors.down.isDown) {
+    } else if (this.cursors.down.isDown || this.wasd.down.isDown) {
       this.player.setVelocityY(this.playerSpeed);
     }
   }
@@ -588,7 +618,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateLivesDisplay() {
-    const hearts = '❤️'.repeat(this.lives);
+    const hearts = '❤️'.repeat(Math.max(0, this.lives));
     this.livesText.setText(`Vite: ${hearts}`);
   }
 
@@ -685,18 +715,20 @@ export class GameScene extends Phaser.Scene {
   private showPauseMenu() {
     const { width, height } = this.cameras.main;
     
-    const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.7).setOrigin(0);
+    const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.7).setOrigin(0).setDepth(1000);
     const text = this.add.text(width / 2, height / 2, 'PAUSA\n\nPremi P per continuare', {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: '32px',
       color: '#ffffff',
       align: 'center'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(1001);
 
-    this.input.keyboard?.once('keydown-P', () => {
+    // Listener per rimuovere overlay quando si riprende
+    const resumeListener = () => {
       overlay.destroy();
       text.destroy();
-      this.scene.resume();
-    });
+    };
+    
+    this.events.once('resume', resumeListener);
   }
 }

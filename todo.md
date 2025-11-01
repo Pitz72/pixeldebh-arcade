@@ -92,3 +92,12 @@
 - [x] Sprite PixelDebh migliorato e più dettagliato
 - [x] Fix bug blocco gioco dopo completamento livello 1
 - [x] Risoluzione errori di console (erano errori esterni di analytics bloccati da adblocker)
+
+## Nuovi Miglioramenti Richiesti
+- [x] Labirinti complessi stile Pac-Man con corridoi e percorsi obbligati
+- [x] Sistema posizionamento intelligente oggetti (evita sovrapposizioni con muri)
+- [x] Fix toggle pausa (P deve attivare/disattivare)
+- [x] Font intro simile al logo PixelDebh fornito (Press Start 2P style)
+- [x] Intro animata stile arcade anni '80 con presentazione sprite
+- [x] Supporto controlli WASD oltre alle frecce direzionali
+- [x] Fix bug blocco al secondo livello (String.repeat con valore negativo)

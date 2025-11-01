@@ -8,184 +8,267 @@ export interface WallSegment {
 }
 
 /**
- * Generatore procedurale di layout per i livelli
+ * Generatore procedurale di layout labirinti stile Pac-Man
  */
 export class LevelGenerator {
+  private static readonly WALL_THICKNESS = 20;
+  private static readonly CORRIDOR_WIDTH = 60;
+  
   /**
-   * Genera un layout di barriere/muri per un livello specifico
+   * Genera un labirinto complesso stile Pac-Man per un livello specifico
    */
   static generateWalls(levelNumber: number, width: number, height: number): WallSegment[] {
     const walls: WallSegment[] = [];
-    const seed = levelNumber * 12345; // Seed per generazione procedurale consistente
-    
-    // Margini di sicurezza
-    const margin = 100;
-    const safeZoneRadius = 80; // Area sicura attorno al centro
+    const margin = 80;
+    const playableWidth = width - 2 * margin;
+    const playableHeight = height - 2 * margin;
     
     switch (levelNumber) {
       case 1:
-        // Livello 1: Barriere semplici orizzontali e verticali
-        walls.push(
-          { x: margin + 100, y: height / 2 - 40, width: 150, height: 20 },
-          { x: width - margin - 250, y: height / 2 - 40, width: 150, height: 20 },
-          { x: width / 2 - 10, y: margin + 80, width: 20, height: 120 },
-          { x: width / 2 - 10, y: height - margin - 200, width: 20, height: 120 }
-        );
+        // Livello 1: Labirinto semplice con corridoi orizzontali e verticali
+        this.addHorizontalWall(walls, margin + 100, margin + 100, 200);
+        this.addHorizontalWall(walls, width - margin - 300, margin + 100, 200);
+        
+        this.addVerticalWall(walls, margin + 100, margin + 150, 180);
+        this.addVerticalWall(walls, width - margin - 100, margin + 150, 180);
+        
+        this.addHorizontalWall(walls, margin + 100, height - margin - 220, 200);
+        this.addHorizontalWall(walls, width - margin - 300, height - margin - 220, 200);
+        
+        this.addVerticalWall(walls, margin + 100, height - margin - 200, 80);
+        this.addVerticalWall(walls, width - margin - 100, height - margin - 200, 80);
+        
+        // Muri centrali
+        this.addHorizontalWall(walls, width / 2 - 100, height / 2 - 60, 80);
+        this.addHorizontalWall(walls, width / 2 + 20, height / 2 - 60, 80);
+        this.addVerticalWall(walls, width / 2 - 10, height / 2 - 40, 80);
         break;
         
       case 2:
-        // Livello 2: Forma a croce
-        walls.push(
-          { x: width / 2 - 10, y: margin + 50, width: 20, height: 180 },
-          { x: width / 2 - 10, y: height - margin - 230, width: 20, height: 180 },
-          { x: margin + 80, y: height / 2 - 10, width: 200, height: 20 },
-          { x: width - margin - 280, y: height / 2 - 10, width: 200, height: 20 }
-        );
+        // Livello 2: Griglia con stanze
+        for (let i = 0; i < 3; i++) {
+          const x = margin + 120 + i * 220;
+          this.addVerticalWall(walls, x, margin + 80, 150);
+          this.addVerticalWall(walls, x, height - margin - 230, 150);
+        }
+        
+        this.addHorizontalWall(walls, margin + 80, margin + 250, 180);
+        this.addHorizontalWall(walls, width - margin - 260, margin + 250, 180);
+        
+        this.addHorizontalWall(walls, margin + 80, height - margin - 270, 180);
+        this.addHorizontalWall(walls, width - margin - 260, height - margin - 270, 180);
+        
+        // Blocchi centrali
+        this.addRectWall(walls, width / 2 - 60, height / 2 - 40, 50, 80);
+        this.addRectWall(walls, width / 2 + 10, height / 2 - 40, 50, 80);
         break;
         
       case 3:
-        // Livello 3: Labirinto a L
-        walls.push(
-          { x: margin + 120, y: margin + 80, width: 20, height: 200 },
-          { x: margin + 120, y: margin + 80, width: 180, height: 20 },
-          { x: width - margin - 300, y: height - margin - 280, width: 20, height: 200 },
-          { x: width - margin - 300, y: height - margin - 100, width: 180, height: 20 },
-          { x: width / 2 - 80, y: height / 2 - 60, width: 160, height: 20 }
-        );
+        // Livello 3: Labirinto a serpente
+        let y = margin + 80;
+        for (let i = 0; i < 4; i++) {
+          if (i % 2 === 0) {
+            this.addHorizontalWall(walls, margin + 80, y, playableWidth - 200);
+          } else {
+            this.addHorizontalWall(walls, margin + 180, y, playableWidth - 200);
+          }
+          y += 120;
+        }
+        
+        // Collegamenti verticali
+        this.addVerticalWall(walls, margin + 80, margin + 100, 100);
+        this.addVerticalWall(walls, width - margin - 100, margin + 220, 100);
+        this.addVerticalWall(walls, margin + 80, margin + 340, 100);
         break;
         
       case 4:
-        // Livello 4: Stanze separate
-        walls.push(
-          { x: width / 3 - 10, y: margin + 60, width: 20, height: height - 2 * margin - 120 },
-          { x: 2 * width / 3 - 10, y: margin + 60, width: 20, height: height - 2 * margin - 120 },
-          { x: margin + 80, y: height / 2 - 60, width: width / 3 - margin - 100, height: 20 },
-          { x: 2 * width / 3 + 20, y: height / 2 + 40, width: width / 3 - margin - 40, height: 20 }
-        );
+        // Livello 4: Quattro quadranti
+        const centerX = width / 2;
+        const centerY = height / 2;
+        
+        // Croce centrale
+        this.addHorizontalWall(walls, margin + 100, centerY - 10, centerX - margin - 180);
+        this.addHorizontalWall(walls, centerX + 80, centerY - 10, centerX - margin - 180);
+        this.addVerticalWall(walls, centerX - 10, margin + 100, centerY - margin - 180);
+        this.addVerticalWall(walls, centerX - 10, centerY + 80, centerY - margin - 180);
+        
+        // Blocchi nei quadranti
+        this.addRectWall(walls, margin + 180, margin + 150, 80, 80);
+        this.addRectWall(walls, width - margin - 260, margin + 150, 80, 80);
+        this.addRectWall(walls, margin + 180, height - margin - 230, 80, 80);
+        this.addRectWall(walls, width - margin - 260, height - margin - 230, 80, 80);
         break;
         
       case 5:
         // Livello 5: Spirale
-        walls.push(
-          { x: margin + 100, y: margin + 80, width: width - 2 * margin - 200, height: 20 },
-          { x: width - margin - 120, y: margin + 80, width: 20, height: 200 },
-          { x: margin + 180, y: margin + 260, width: width - 2 * margin - 300, height: 20 },
-          { x: margin + 180, y: margin + 160, width: 20, height: 100 },
-          { x: margin + 100, y: height - margin - 180, width: width - 2 * margin - 200, height: 20 },
-          { x: margin + 100, y: height - margin - 280, width: 20, height: 100 }
-        );
+        this.addHorizontalWall(walls, margin + 80, margin + 80, playableWidth - 160);
+        this.addVerticalWall(walls, width - margin - 100, margin + 100, playableHeight - 240);
+        this.addHorizontalWall(walls, margin + 160, height - margin - 100, playableWidth - 240);
+        this.addVerticalWall(walls, margin + 180, margin + 180, playableHeight - 360);
+        this.addHorizontalWall(walls, margin + 200, margin + 180, playableWidth - 400);
+        this.addVerticalWall(walls, width - margin - 200, margin + 200, playableHeight - 480);
+        this.addHorizontalWall(walls, margin + 280, height - margin - 200, playableWidth - 560);
         break;
         
       case 6:
-        // Livello 6: Griglia complessa
-        for (let i = 0; i < 3; i++) {
-          const xPos = margin + 150 + i * 180;
-          walls.push({ x: xPos, y: margin + 100, width: 20, height: 150 });
-          walls.push({ x: xPos, y: height - margin - 250, width: 20, height: 150 });
-        }
-        for (let i = 0; i < 2; i++) {
-          const yPos = margin + 180 + i * 160;
-          walls.push({ x: margin + 120, y: yPos, width: 140, height: 20 });
-          walls.push({ x: width - margin - 260, y: yPos, width: 140, height: 20 });
+        // Livello 6: Labirinto complesso a griglia
+        for (let row = 0; row < 3; row++) {
+          for (let col = 0; col < 4; col++) {
+            const x = margin + 100 + col * 180;
+            const y = margin + 100 + row * 140;
+            
+            if ((row + col) % 2 === 0) {
+              this.addRectWall(walls, x, y, 100, 20);
+            } else {
+              this.addRectWall(walls, x, y, 20, 80);
+            }
+          }
         }
         break;
         
       case 7:
-        // Livello 7: Corridoi stretti
-        walls.push(
-          { x: margin + 140, y: margin + 80, width: 20, height: 240 },
-          { x: margin + 140, y: margin + 80, width: 240, height: 20 },
-          { x: width - margin - 380, y: margin + 80, width: 240, height: 20 },
-          { x: width - margin - 160, y: margin + 80, width: 20, height: 240 },
-          { x: margin + 140, y: height - margin - 320, width: 20, height: 240 },
-          { x: margin + 140, y: height - margin - 100, width: 240, height: 20 },
-          { x: width - margin - 380, y: height - margin - 100, width: 240, height: 20 },
-          { x: width - margin - 160, y: height - margin - 320, width: 20, height: 240 }
-        );
+        // Livello 7: Corridoi stretti e incroci
+        const corridorY = [margin + 120, height / 2 - 10, height - margin - 140];
+        corridorY.forEach(y => {
+          this.addHorizontalWall(walls, margin + 80, y - 30, 150);
+          this.addHorizontalWall(walls, width - margin - 230, y - 30, 150);
+          this.addHorizontalWall(walls, margin + 80, y + 30, 150);
+          this.addHorizontalWall(walls, width - margin - 230, y + 30, 150);
+        });
+        
+        const corridorX = [margin + 200, width / 2 - 10, width - margin - 220];
+        corridorX.forEach(x => {
+          this.addVerticalWall(walls, x - 30, margin + 80, 120);
+          this.addVerticalWall(walls, x + 30, margin + 80, 120);
+          this.addVerticalWall(walls, x - 30, height - margin - 200, 120);
+          this.addVerticalWall(walls, x + 30, height - margin - 200, 120);
+        });
         break;
         
       case 8:
-        // Livello 8: Forma a stella
-        const centerX = width / 2;
-        const centerY = height / 2;
-        const starPoints = 5;
-        const outerRadius = 180;
-        const innerRadius = 80;
-        
-        for (let i = 0; i < starPoints; i++) {
-          const angle1 = (i * 2 * Math.PI) / starPoints - Math.PI / 2;
-          const angle2 = ((i + 0.5) * 2 * Math.PI) / starPoints - Math.PI / 2;
+        // Livello 8: Labirinto concentrico
+        const rings = 3;
+        for (let ring = 0; ring < rings; ring++) {
+          const offset = margin + 100 + ring * 100;
+          const size = playableWidth - ring * 200;
+          const sizeH = playableHeight - ring * 200;
           
-          const x1 = centerX + Math.cos(angle1) * outerRadius;
-          const y1 = centerY + Math.sin(angle1) * outerRadius;
-          const x2 = centerX + Math.cos(angle2) * innerRadius;
-          const y2 = centerY + Math.sin(angle2) * innerRadius;
-          
-          // Crea un muro tra i punti
-          const dx = x2 - x1;
-          const dy = y2 - y1;
-          const length = Math.sqrt(dx * dx + dy * dy);
-          const angle = Math.atan2(dy, dx);
-          
-          if (Math.abs(dx) > Math.abs(dy)) {
-            walls.push({ x: Math.min(x1, x2), y: (y1 + y2) / 2 - 10, width: length, height: 20 });
-          } else {
-            walls.push({ x: (x1 + x2) / 2 - 10, y: Math.min(y1, y2), width: 20, height: length });
-          }
+          // Top
+          this.addHorizontalWall(walls, offset, offset, size - 100);
+          // Right
+          this.addVerticalWall(walls, width - offset - 20, offset, sizeH - 100);
+          // Bottom
+          this.addHorizontalWall(walls, offset + 100, height - offset - 20, size - 100);
+          // Left
+          this.addVerticalWall(walls, offset, offset + 100, sizeH - 100);
         }
         break;
         
       case 9:
-        // Livello 9 (Finale): Labirinto complesso
-        walls.push(
-          // Bordo esterno
-          { x: margin + 80, y: margin + 60, width: width - 2 * margin - 160, height: 20 },
-          { x: margin + 80, y: height - margin - 80, width: width - 2 * margin - 160, height: 20 },
-          { x: margin + 80, y: margin + 60, width: 20, height: height - 2 * margin - 140 },
-          { x: width - margin - 100, y: margin + 60, width: 20, height: height - 2 * margin - 140 },
-          
-          // Struttura interna complessa
-          { x: margin + 180, y: margin + 140, width: 20, height: 160 },
-          { x: margin + 180, y: margin + 140, width: 160, height: 20 },
-          { x: width - margin - 340, y: margin + 140, width: 160, height: 20 },
-          { x: width - margin - 200, y: margin + 140, width: 20, height: 160 },
-          
-          { x: width / 2 - 100, y: height / 2 - 80, width: 200, height: 20 },
-          { x: width / 2 - 10, y: height / 2 - 80, width: 20, height: 160 },
-          
-          { x: margin + 180, y: height - margin - 300, width: 20, height: 160 },
-          { x: margin + 180, y: height - margin - 160, width: 160, height: 20 },
-          { x: width - margin - 340, y: height - margin - 160, width: 160, height: 20 },
-          { x: width - margin - 200, y: height - margin - 300, width: 20, height: 160 }
-        );
+        // Livello 9 (Finale): Labirinto master complesso
+        // Bordo esterno con aperture
+        this.addHorizontalWall(walls, margin + 80, margin + 60, 200);
+        this.addHorizontalWall(walls, width - margin - 280, margin + 60, 200);
+        this.addVerticalWall(walls, margin + 80, margin + 80, 180);
+        this.addVerticalWall(walls, width - margin - 100, margin + 80, 180);
+        
+        this.addHorizontalWall(walls, margin + 80, height - margin - 80, 200);
+        this.addHorizontalWall(walls, width - margin - 280, height - margin - 80, 200);
+        this.addVerticalWall(walls, margin + 80, height - margin - 260, 180);
+        this.addVerticalWall(walls, width - margin - 100, height - margin - 260, 180);
+        
+        // Struttura interna complessa
+        const gridSize = 6;
+        for (let i = 0; i < gridSize; i++) {
+          for (let j = 0; j < gridSize; j++) {
+            const x = margin + 160 + i * 100;
+            const y = margin + 140 + j * 80;
+            
+            // Pattern complesso
+            if ((i + j) % 3 === 0) {
+              this.addRectWall(walls, x, y, 60, 20);
+            } else if ((i + j) % 3 === 1) {
+              this.addRectWall(walls, x, y, 20, 50);
+            }
+          }
+        }
         break;
         
       default:
-        // Livelli extra: pattern casuale basato sul seed
-        const numWalls = 4 + (levelNumber % 4);
-        for (let i = 0; i < numWalls; i++) {
-          const isHorizontal = (seed + i) % 2 === 0;
-          const x = margin + ((seed + i * 123) % (width - 2 * margin - 200));
-          const y = margin + ((seed + i * 456) % (height - 2 * margin - 200));
-          
-          if (isHorizontal) {
-            walls.push({ x, y, width: 120 + ((seed + i) % 80), height: 20 });
-          } else {
-            walls.push({ x, y, width: 20, height: 120 + ((seed + i) % 80) });
-          }
-        }
+        // Livelli extra: pattern semplice
+        this.addHorizontalWall(walls, margin + 100, margin + 100, 200);
+        this.addVerticalWall(walls, width - margin - 100, margin + 100, 200);
+        this.addHorizontalWall(walls, width - margin - 300, height - margin - 120, 200);
+        this.addVerticalWall(walls, margin + 100, height - margin - 300, 200);
     }
     
-    // Filtra i muri che sono troppo vicini al centro (zona spawn giocatore)
-    return walls.filter(wall => {
-      const wallCenterX = wall.x + wall.width / 2;
-      const wallCenterY = wall.y + wall.height / 2;
+    return walls;
+  }
+  
+  /**
+   * Aggiunge un muro orizzontale
+   */
+  private static addHorizontalWall(walls: WallSegment[], x: number, y: number, length: number) {
+    walls.push({ x, y, width: length, height: this.WALL_THICKNESS });
+  }
+  
+  /**
+   * Aggiunge un muro verticale
+   */
+  private static addVerticalWall(walls: WallSegment[], x: number, y: number, length: number) {
+    walls.push({ x, y, width: this.WALL_THICKNESS, height: length });
+  }
+  
+  /**
+   * Aggiunge un blocco rettangolare
+   */
+  private static addRectWall(walls: WallSegment[], x: number, y: number, w: number, h: number) {
+    walls.push({ x, y, width: w, height: h });
+  }
+  
+  /**
+   * Verifica se una posizione è libera (non sovrapposta a muri)
+   */
+  static isPositionFree(x: number, y: number, walls: WallSegment[], margin: number = 30): boolean {
+    for (const wall of walls) {
+      if (x + margin > wall.x && 
+          x - margin < wall.x + wall.width &&
+          y + margin > wall.y && 
+          y - margin < wall.y + wall.height) {
+        return false;
+      }
+    }
+    return true;
+  }
+  
+  /**
+   * Trova una posizione casuale libera
+   */
+  static findFreePosition(
+    walls: WallSegment[], 
+    width: number, 
+    height: number, 
+    margin: number = 100,
+    objectMargin: number = 30
+  ): { x: number; y: number } | null {
+    const maxAttempts = 50;
+    
+    for (let i = 0; i < maxAttempts; i++) {
+      const x = margin + Math.random() * (width - 2 * margin);
+      const y = margin + Math.random() * (height - 2 * margin);
+      
+      // Evita il centro (spawn giocatore)
       const distFromCenter = Math.sqrt(
-        Math.pow(wallCenterX - width / 2, 2) + 
-        Math.pow(wallCenterY - height / 2, 2)
+        Math.pow(x - width / 2, 2) + 
+        Math.pow(y - height / 2, 2)
       );
-      return distFromCenter > safeZoneRadius;
-    });
+      
+      if (distFromCenter > 80 && this.isPositionFree(x, y, walls, objectMargin)) {
+        return { x, y };
+      }
+    }
+    
+    return null;
   }
   
   /**
@@ -205,11 +288,11 @@ export class LevelGenerator {
         wall.width,
         wall.height,
         wallColor,
-        0.8
+        0.9
       );
       
-      // Aggiungi bordo per visibilità
-      wallSprite.setStrokeStyle(2, wallColor + 0x202020);
+      // Aggiungi bordo per effetto 3D
+      wallSprite.setStrokeStyle(3, wallColor + 0x303030);
       
       scene.physics.add.existing(wallSprite, true);
       wallGroup.add(wallSprite);
