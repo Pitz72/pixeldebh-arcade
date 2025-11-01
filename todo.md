@@ -84,3 +84,11 @@
 - [x] README con istruzioni di gioco
 - [x] Documentazione codice
 - [x] Credits e attributions
+
+## Miglioramenti Richiesti
+- [x] Sfondi colorati diversi per ogni livello (non solo per era)
+- [x] Sistema di barriere e ostacoli nei livelli
+- [x] Generazione procedurale layout livelli con percorsi variabili
+- [x] Sprite PixelDebh migliorato e più dettagliato
+- [x] Fix bug blocco gioco dopo completamento livello 1
+- [x] Risoluzione errori di console (erano errori esterni di analytics bloccati da adblocker)

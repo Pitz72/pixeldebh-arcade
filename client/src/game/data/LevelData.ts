@@ -32,8 +32,8 @@ export const LEVELS: LevelConfig[] = [
   {
     era: Era.BIT_8,
     levelNumber: 1,
-    backgroundColor: 0x1a1a2e,
-    gridColor: 0x16213e,
+    backgroundColor: 0x0f0f1e, // Blu scuro profondo
+    gridColor: 0x1a1a3e,
     collectibles: {
       floppy: 8,
       cartridge: 4,
@@ -56,8 +56,8 @@ export const LEVELS: LevelConfig[] = [
   {
     era: Era.BIT_8,
     levelNumber: 2,
-    backgroundColor: 0x1a1a2e,
-    gridColor: 0x16213e,
+    backgroundColor: 0x1a1a3e, // Blu notte
+    gridColor: 0x2a2a4e,
     collectibles: {
       floppy: 10,
       cartridge: 6,
@@ -80,8 +80,8 @@ export const LEVELS: LevelConfig[] = [
   {
     era: Era.BIT_8,
     levelNumber: 3,
-    backgroundColor: 0x1a1a2e,
-    gridColor: 0x16213e,
+    backgroundColor: 0x0a2a3a, // Blu-verde scuro
+    gridColor: 0x1a3a4a,
     collectibles: {
       floppy: 12,
       cartridge: 8,
@@ -104,8 +104,8 @@ export const LEVELS: LevelConfig[] = [
   {
     era: Era.BIT_16,
     levelNumber: 4,
-    backgroundColor: 0x2d1b4e,
-    gridColor: 0x3d2b5e,
+    backgroundColor: 0x2a1a4a, // Viola profondo
+    gridColor: 0x3a2a5a,
     collectibles: {
       floppy: 6,
       cartridge: 10,
@@ -128,8 +128,8 @@ export const LEVELS: LevelConfig[] = [
   {
     era: Era.BIT_16,
     levelNumber: 5,
-    backgroundColor: 0x2d1b4e,
-    gridColor: 0x3d2b5e,
+    backgroundColor: 0x3a1a5a, // Viola intenso
+    gridColor: 0x4a2a6a,
     collectibles: {
       floppy: 8,
       cartridge: 12,
@@ -152,8 +152,8 @@ export const LEVELS: LevelConfig[] = [
   {
     era: Era.BIT_16,
     levelNumber: 6,
-    backgroundColor: 0x2d1b4e,
-    gridColor: 0x3d2b5e,
+    backgroundColor: 0x4a1a6a, // Viola magenta
+    gridColor: 0x5a2a7a,
     collectibles: {
       floppy: 10,
       cartridge: 14,
@@ -176,8 +176,8 @@ export const LEVELS: LevelConfig[] = [
   {
     era: Era.BIT_32_64,
     levelNumber: 7,
-    backgroundColor: 0x0f3460,
-    gridColor: 0x1f4470,
+    backgroundColor: 0x0a2a50, // Blu oceano scuro
+    gridColor: 0x1a3a60,
     collectibles: {
       floppy: 4,
       cartridge: 8,
@@ -200,8 +200,8 @@ export const LEVELS: LevelConfig[] = [
   {
     era: Era.BIT_32_64,
     levelNumber: 8,
-    backgroundColor: 0x0f3460,
-    gridColor: 0x1f4470,
+    backgroundColor: 0x1a3a60, // Blu acciaio
+    gridColor: 0x2a4a70,
     collectibles: {
       floppy: 6,
       cartridge: 10,
@@ -224,8 +224,8 @@ export const LEVELS: LevelConfig[] = [
   {
     era: Era.BIT_32_64,
     levelNumber: 9,
-    backgroundColor: 0x0f3460,
-    gridColor: 0x1f4470,
+    backgroundColor: 0x2a4a70, // Blu elettrico scuro
+    gridColor: 0x3a5a80,
     collectibles: {
       floppy: 8,
       cartridge: 12,

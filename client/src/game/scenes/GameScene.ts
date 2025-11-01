@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { SpriteGenerator } from '../utils/SpriteGenerator';
 import { getLevelConfig, getEraName, type LevelConfig } from '../data/LevelData';
 import { SoundManager } from '../utils/SoundManager';
+import { LevelGenerator } from '../utils/LevelGenerator';
 
 // Tipi di oggetti da collezione
 enum CollectibleType {
@@ -50,6 +51,7 @@ export class GameScene extends Phaser.Scene {
   private isInvincible: boolean = false;
   private hasShield: boolean = false;
   private soundManager!: SoundManager;
+  private walls!: Phaser.Physics.Arcade.StaticGroup;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -76,6 +78,9 @@ export class GameScene extends Phaser.Scene {
     
     // Griglia di sfondo stile circuito
     this.createBackgroundGrid();
+
+    // Creazione muri/barriere
+    this.createWalls();
 
     // Creazione giocatore
     this.createPlayer();
@@ -123,6 +128,15 @@ export class GameScene extends Phaser.Scene {
     for (let y = 0; y < height; y += 40) {
       graphics.lineBetween(0, y, width, y);
     }
+  }
+
+  private createWalls() {
+    const { width, height } = this.cameras.main;
+    const wallSegments = LevelGenerator.generateWalls(this.level, width, height);
+    
+    // Calcola colore muri basato sul colore della griglia
+    const wallColor = this.levelConfig.gridColor + 0x101010;
+    this.walls = LevelGenerator.createWallsInScene(this, wallSegments, wallColor);
   }
 
   private createPlayer() {
@@ -358,6 +372,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupCollisions() {
+    // Collisione giocatore con muri
+    this.physics.add.collider(this.player, this.walls);
+    
+    // Collisione nemici con muri
+    this.physics.add.collider(this.enemies, this.walls);
+    
     // Collisione con oggetti da collezione
     this.physics.add.overlap(
       this.player,
@@ -604,7 +624,8 @@ export class GameScene extends Phaser.Scene {
       if (this.level >= 9) {
         this.showVictoryScreen();
       } else {
-        this.scene.restart({ level: this.level + 1, score: this.score, lives: this.lives });
+        // Usa scene.start invece di scene.restart per evitare problemi
+        this.scene.start('GameScene', { level: this.level + 1, score: this.score, lives: this.lives });
       }
     });
   }

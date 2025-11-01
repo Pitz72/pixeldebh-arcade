@@ -7,31 +7,71 @@ export class SpriteGenerator {
   static generatePlayer(scene: Phaser.Scene): void {
     const graphics = scene.add.graphics();
     
-    // Corpo (arancione)
+    // Corpo (maglietta arancione)
     graphics.fillStyle(0xff9933, 1);
-    graphics.fillCircle(16, 20, 12);
+    graphics.fillRect(10, 16, 12, 10);
+    graphics.fillCircle(16, 20, 7);
+    
+    // Braccia
+    graphics.fillStyle(0xffd4a3, 1);
+    graphics.fillRect(8, 18, 3, 6);
+    graphics.fillRect(21, 18, 3, 6);
     
     // Testa (pelle)
     graphics.fillStyle(0xffd4a3, 1);
-    graphics.fillCircle(16, 12, 8);
+    graphics.fillCircle(16, 11, 7);
     
-    // Capelli (marrone scuro)
+    // Capelli (marrone scuro con dettagli)
     graphics.fillStyle(0x5c4033, 1);
-    graphics.fillRect(10, 6, 12, 6);
+    graphics.fillRect(10, 5, 12, 7);
+    // Ciuffo
+    graphics.fillCircle(13, 5, 3);
+    graphics.fillCircle(19, 5, 3);
     
-    // Occhi
+    // Occhi (più grandi e espressivi)
+    graphics.fillStyle(0xffffff, 1);
+    graphics.fillCircle(13, 11, 2);
+    graphics.fillCircle(19, 11, 2);
     graphics.fillStyle(0x2d4a3e, 1);
-    graphics.fillCircle(13, 12, 2);
-    graphics.fillCircle(19, 12, 2);
+    graphics.fillCircle(13, 11, 1.5);
+    graphics.fillCircle(19, 11, 1.5);
     
-    // Cuffie (arancione scuro)
+    // Sopracciglia
+    graphics.lineStyle(1, 0x5c4033);
+    graphics.lineBetween(11, 9, 14, 9);
+    graphics.lineBetween(18, 9, 21, 9);
+    
+    // Bocca sorridente
+    graphics.lineStyle(1, 0x2d4a3e);
+    graphics.arc(16, 13, 3, 0.3, 2.8);
+    
+    // Cuffie (arancione scuro con dettagli)
     graphics.fillStyle(0xd94f2a, 1);
-    graphics.fillCircle(8, 12, 4);
-    graphics.fillCircle(24, 12, 4);
+    graphics.fillCircle(8, 11, 4);
+    graphics.fillCircle(24, 11, 4);
+    // Archetto cuffie
+    graphics.lineStyle(2, 0xd94f2a);
+    graphics.arc(16, 11, 9, Math.PI, 0, true);
+    // Dettagli cuffie
+    graphics.fillStyle(0x000000, 1);
+    graphics.fillCircle(8, 11, 2);
+    graphics.fillCircle(24, 11, 2);
     
-    // Controller (grigio)
+    // Controller (grigio con dettagli)
     graphics.fillStyle(0x4a4a4a, 1);
-    graphics.fillRect(12, 26, 8, 4);
+    graphics.fillRect(11, 24, 10, 5);
+    graphics.fillStyle(0x6a6a6a, 1);
+    graphics.fillRect(12, 25, 8, 3);
+    // Pulsanti controller
+    graphics.fillStyle(0xff0000, 1);
+    graphics.fillCircle(14, 26, 1);
+    graphics.fillStyle(0x00ff00, 1);
+    graphics.fillCircle(18, 26, 1);
+    
+    // Gambe/piedi
+    graphics.fillStyle(0x4a4a4a, 1);
+    graphics.fillRect(12, 26, 3, 4);
+    graphics.fillRect(17, 26, 3, 4);
     
     graphics.generateTexture('player', 32, 32);
     graphics.destroy();
