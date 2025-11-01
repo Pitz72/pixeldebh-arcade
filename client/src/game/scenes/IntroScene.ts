@@ -30,7 +30,23 @@ export class IntroScene extends Phaser.Scene {
     border.setStrokeStyle(8, 0x2d4a3e);
     border.setFillStyle(0xff9933);
 
+    // Testo skip
+    this.add.text(width - 20, height - 20, 'SPACE o ESC per saltare', {
+      fontFamily: '"Press Start 2P", "Courier New", monospace',
+      fontSize: '8px',
+      color: '#2d4a3e'
+    }).setOrigin(1, 1).setAlpha(0.7);
+
+    // Permetti skip con SPACE o ESC
+    this.input.keyboard?.on('keydown-SPACE', this.skipIntro, this);
+    this.input.keyboard?.on('keydown-ESC', this.skipIntro, this);
+
     this.showIntroSequence();
+  }
+
+  private skipIntro() {
+    this.soundManager.playMenuClick();
+    this.scene.start('MenuScene');
   }
 
   private showIntroSequence() {

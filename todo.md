@@ -101,3 +101,28 @@
 - [x] Intro animata stile arcade anni '80 con presentazione sprite
 - [x] Supporto controlli WASD oltre alle frecce direzionali
 - [x] Fix bug blocco al secondo livello (String.repeat con valore negativo)
+
+## Problemi Critici da Risolvere
+- [x] Caricare font Press Start 2P nell'HTML
+- [x] Aggiornare MenuScene con font retro
+- [x] Aggiornare testo controlli (WASD + Frecce + P)
+- [x] Fixare movimento nemici attraverso muri
+- [x] Aggiungere logica aggiornamento nemici in update()
+
+## Problemi Moderati da Risolvere
+- [x] Rendere intro skippabile
+- [x] Aggiungere contatore oggetti rimanenti nell'HUD
+- [ ] Migliorare sprite PixelDebh (confronto con logo)
+- [ ] Bilanciare spawn power-up
+
+## Problemi Minori da Risolvere
+- [ ] Aggiungere feedback visivo collisione muri (opzionale - non critico)
+- [x] Implementare salvataggio high score localStorage
+- [x] Migliorare GameOverScene con statistiche
+
+## Documentazione GitHub
+- [x] README.md completo
+- [x] CONTRIBUTING.md
+- [x] LICENSE
+- [x] .gitignore
+- [x] Documentazione tecnica architettura (ANALISI_CRITICA.md)

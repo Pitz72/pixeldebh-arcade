@@ -48,6 +48,7 @@ export class GameScene extends Phaser.Scene {
   private scoreText!: Phaser.GameObjects.Text;
   private livesText!: Phaser.GameObjects.Text;
   private levelText!: Phaser.GameObjects.Text;
+  private collectiblesText!: Phaser.GameObjects.Text;
   
   private playerSpeed: number = 160;
   private isInvincible: boolean = false;
@@ -129,6 +130,50 @@ export class GameScene extends Phaser.Scene {
 
   update() {
     this.handlePlayerMovement();
+    this.updateEnemies();
+  }
+
+  private updateEnemies() {
+    if (!this.enemies || !this.walls) return;
+
+    // Controlla ogni nemico per collisioni con muri e gestisci il comportamento
+    this.enemies.children.entries.forEach((enemy: any) => {
+      const sprite = enemy as Phaser.Physics.Arcade.Sprite;
+      if (!sprite.active) return;
+
+      const type = sprite.getData('type');
+      const speed = sprite.getData('speed');
+
+      // Per nemici che usano velocity (LAG), inverti direzione se collidono
+      if (type === EnemyType.LAG && sprite.body) {
+        const body = sprite.body as Phaser.Physics.Arcade.Body;
+        if (body.blocked.left || body.blocked.right) {
+          body.velocity.x *= -1;
+        }
+        if (body.blocked.up || body.blocked.down) {
+          body.velocity.y *= -1;
+        }
+      }
+
+      // Per BUG che insegue, verifica se può raggiungere il giocatore
+      if (type === EnemyType.BUG && sprite.body) {
+        const body = sprite.body as Phaser.Physics.Arcade.Body;
+        // Se bloccato, prova a muoverti in direzione alternativa
+        if ((body.blocked.left || body.blocked.right || body.blocked.up || body.blocked.down) && this.player) {
+          const angle = Phaser.Math.Angle.Between(
+            sprite.x, sprite.y,
+            this.player.x, this.player.y
+          );
+          // Aggiungi offset casuale per evitare blocco permanente
+          const offset = Phaser.Math.Between(-90, 90) * (Math.PI / 180);
+          const newAngle = angle + offset;
+          sprite.setVelocity(
+            Math.cos(newAngle) * speed,
+            Math.sin(newAngle) * speed
+          );
+        }
+      }
+    });
   }
 
   private createBackgroundGrid() {
@@ -398,6 +443,16 @@ export class GameScene extends Phaser.Scene {
       stroke: '#000000',
       strokeThickness: 3
     }).setOrigin(1, 0);
+
+    // Contatore oggetti rimanenti
+    const totalCollectibles = this.collectiblesRemaining;
+    this.collectiblesText = this.add.text(16, 45, `Oggetti: ${totalCollectibles}/${totalCollectibles}`, {
+      fontFamily: 'Arial Black, sans-serif',
+      fontSize: '16px',
+      color: '#ffcc00',
+      stroke: '#000000',
+      strokeThickness: 3
+    });
   }
 
   private setupCollisions() {
@@ -464,10 +519,12 @@ export class GameScene extends Phaser.Scene {
     this.score += points;
     this.scoreText.setText(`Punteggio: ${this.score}`);
     
-    sprite.destroy();
     this.collectiblesRemaining--;
+    const totalCollectibles = this.collectibles.getLength() + this.collectiblesRemaining;
+    this.collectiblesText.setText(`Oggetti: ${this.collectiblesRemaining}/${totalCollectibles}`);
     
-    // Suono raccolta
+    sprite.destroy();
+    
     this.soundManager.playCollect();
 
     // Effetto visivo
