@@ -5,6 +5,30 @@ Tutti i cambiamenti significativi a questo progetto sono documentati in questo f
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/)
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.6.0] - 2026-05-22
+
+### Changed — Criticità LIEVI (polish: dedup sprite + docs allineate)
+
+- **SpriteGenerator deduplicato**
+  - Introdotto helper privato `SpriteGenerator.withTexture(scene, key, width, height, drawFn)` che incapsula il pattern ripetuto `add.graphics() → draw → generateTexture(key, w, h) → destroy()`.
+  - 15 occorrenze del pattern sostituite (player, 5 nemici, 5 collectibles, 4 power-up): ~75 righe di boilerplate rimosse, ogni sprite ora dichiara solo *cosa* disegna, non *come* registrare la texture.
+  - Comportamento runtime identico; nessun cambio alle texture key esposte alle scene.
+
+- **README.md allineato al codice reale**
+  - Sezione "Script Disponibili": rimosso `pnpm type-check` (mai esistito → ora correttamente documentato come `pnpm check`); aggiunti `pnpm test`, `pnpm test:watch`, `pnpm start`, `pnpm format`.
+  - Sezione "Struttura del Progetto": riscritta da zero (la versione precedente citava ancora `components/ui/` shadcn rimosso in v1.4.0, e file storici tipo `ANALISI_CRITICA.md`). Ora riflette davvero il layout corrente, inclusi `game/ui/HUD.ts`, i file `.test.ts`, `server/`, `eslint.config.js`, `vitest.config.ts`.
+  - Sezione "Testing": rimossi script inesistenti `test:coverage` / `test:e2e`, sostituiti con la descrizione effettiva dello stato (Vitest + jsdom, e2e marcata come future work in CHANGELOG).
+
+- **CONTRIBUTING.md allineato**
+  - Rimosso `pnpm format:check` (non esisteva).
+  - Rimosso `pnpm test:coverage` (non esiste), aggiunta nota su come abilitarlo (`@vitest/coverage-v8`) quando servirà.
+
+### Notes — decisioni esplicite
+
+- **Mix lingue IT/EN nei commenti**: lasciato invariato. Il progetto è italiano (UI, dialoghi, nomi di nemici come "Hater"/"DRM"/"Glitch" sono volutamente narrativi), i commenti in italiano sono coerenti col target dell'autore. Non è un bug da risolvere ma una scelta editoriale.
+- **ADR (Architecture Decision Records)**: non introdotti. Per un progetto solo-developer con CHANGELOG già dettagliato, gli ADR sarebbero overhead di processo senza beneficio reale. Le decisioni architetturali significative restano tracciate nei changelog di versione (es. v1.4.0 per la rimozione di shadcn, v1.5.0 per il deferimento del refactor di GameScene).
+- **Hardcoded UI strings in GameScene**: parzialmente affrontato in v1.5.0 con `HUD.ts` (costanti di stile estratte come `TITLE_STYLE`/`COUNTER_STYLE`). Il residuo (testi di livello completato, vittoria, pause menu) è confinato in 3 punti — non vale l'astrazione.
+
 ## [1.5.0] - 2026-05-22
 
 ### Changed — Criticità MEDIE (bucket C: estrazione HUD + test suite)

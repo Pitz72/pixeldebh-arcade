@@ -176,9 +176,6 @@ Il progetto usa Prettier per formattazione automatica:
 ```bash
 # Formatta tutto il codice
 pnpm format
-
-# Controlla formattazione senza modificare
-pnpm format:check
 ```
 
 Configurazione Prettier (`.prettierrc`):
@@ -337,15 +334,14 @@ describe('HighScoreManager', () => {
 ### Eseguire Test
 
 ```bash
-# Tutti i test
+# Tutti i test (one-shot, usato in CI)
 pnpm test
 
 # Test in watch mode
 pnpm test:watch
-
-# Coverage
-pnpm test:coverage
 ```
+
+> Coverage non e' ancora configurato; quando servira' verra' aggiunto come step opzionale via `vitest run --coverage` con `@vitest/coverage-v8`.
 
 ## 📚 Risorse Utili
 

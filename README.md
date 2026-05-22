@@ -127,48 +127,65 @@ pnpm preview
 ### Script Disponibili
 
 - `pnpm dev`: Avvia server di sviluppo con HMR
-- `pnpm build`: Compila il progetto per produzione
+- `pnpm build`: Compila il progetto per produzione (Vite + esbuild server)
+- `pnpm start`: Avvia il server di produzione (richiede build precedente)
 - `pnpm preview`: Serve la build di produzione localmente
-- `pnpm lint`: Esegue ESLint sul codice
-- `pnpm type-check`: Verifica i tipi TypeScript
+- `pnpm check`: Verifica i tipi TypeScript (`tsc --noEmit`)
+- `pnpm lint`: Esegue ESLint su `client/src` e `server`
+- `pnpm test`: Esegue i test unitari Vitest (one-shot)
+- `pnpm test:watch`: Esegue i test in watch mode
+- `pnpm format`: Formatta il codice con Prettier
 
 ## 🏗️ Struttura del Progetto
 
 ```
 pixeldebh-arcade/
 ├── client/
-│   ├── public/               # Asset statici
-│   │   └── PixelDebh.jpg    # Logo del gioco
-│   ├── src/
-│   │   ├── components/       # Componenti React
-│   │   │   ├── Game.tsx     # Wrapper Phaser in React
-│   │   │   └── ui/          # Componenti shadcn/ui
-│   │   ├── game/            # Logica gioco Phaser
-│   │   │   ├── config.ts    # Configurazione Phaser
-│   │   │   ├── data/
-│   │   │   │   └── LevelData.ts      # Dati livelli
-│   │   │   ├── scenes/
-│   │   │   │   ├── IntroScene.ts     # Intro animata
-│   │   │   │   ├── MenuScene.ts      # Menu principale
-│   │   │   │   ├── GameScene.ts      # Scena di gioco
-│   │   │   │   └── GameOverScene.ts  # Game over
-│   │   │   └── utils/
-│   │   │       ├── SpriteGenerator.ts    # Generazione sprite
-│   │   │       ├── SoundManager.ts       # Gestione audio
-│   │   │       ├── LevelGenerator.ts     # Generazione labirinti
-│   │   │       └── HighScoreManager.ts   # Gestione punteggi
-│   │   ├── pages/           # Pagine React
-│   │   │   └── Home.tsx
-│   │   ├── App.tsx          # App React principale
-│   │   ├── main.tsx         # Entry point
-│   │   └── index.css        # Stili globali
-│   └── index.html           # HTML template
-├── README.md                # Questo file
-├── CONTRIBUTING.md          # Linee guida contribuzione
-├── LICENSE                  # Licenza MIT
-├── ANALISI_CRITICA.md       # Analisi tecnica del codice
-├── todo.md                  # Task tracker del progetto
-└── package.json             # Dipendenze progetto
+│   ├── public/                       # Asset statici
+│   └── src/
+│       ├── components/
+│       │   ├── Game.tsx              # Wrapper Phaser in React
+│       │   └── ErrorBoundary.tsx     # Error boundary di classe
+│       ├── contexts/
+│       │   └── ThemeContext.tsx
+│       ├── game/                     # Logica gioco Phaser
+│       │   ├── config.ts             # Configurazione Phaser
+│       │   ├── data/
+│       │   │   ├── LevelData.ts      # Dati 9 livelli + helper
+│       │   │   └── LevelData.test.ts
+│       │   ├── scenes/
+│       │   │   ├── IntroScene.ts     # Intro animata
+│       │   │   ├── MenuScene.ts      # Menu principale
+│       │   │   ├── GameScene.ts      # Scena di gioco (orchestrator)
+│       │   │   └── GameOverScene.ts  # Game over
+│       │   ├── ui/
+│       │   │   └── HUD.ts            # HUD score/vite/livello
+│       │   └── utils/
+│       │       ├── SpriteGenerator.ts        # Generazione sprite
+│       │       ├── SoundManager.ts           # Audio (singleton AudioContext)
+│       │       ├── LevelGenerator.ts         # Generazione labirinti
+│       │       ├── HighScoreManager.ts       # Punteggi (Zod-validated)
+│       │       └── HighScoreManager.test.ts
+│       ├── pages/
+│       │   ├── Home.tsx
+│       │   └── NotFound.tsx
+│       ├── App.tsx                   # App React principale
+│       ├── main.tsx                  # Entry point
+│       └── index.css                 # Stili globali (Tailwind)
+├── server/
+│   └── index.ts                      # Express statico + security headers
+├── shared/
+│   └── const.ts
+├── .github/workflows/ci.yml          # CI: check + lint + test + build
+├── eslint.config.js                  # ESLint flat config
+├── vite.config.ts
+├── vitest.config.ts
+├── tsconfig.json
+├── .env.example
+├── CHANGELOG.md
+├── CONTRIBUTING.md
+├── LICENSE
+└── package.json
 ```
 
 ## 🎨 Design e Asset
@@ -211,18 +228,17 @@ Contribuzioni sono benvenute! Per favore leggi [CONTRIBUTING.md](./CONTRIBUTING.
 
 ## 🧪 Testing
 
-Il progetto include test per garantire stabilità e qualità del codice:
+Test unitari con [Vitest](https://vitest.dev/) + `jsdom`. Coprono al momento le utility pure (`HighScoreManager` con validazione Zod + edge case di storage, `LevelData` con clamp e invarianti del dataset).
 
 ```bash
-# Esegui test unitari
+# Esegui i test unitari (one-shot, usato anche in CI)
 pnpm test
 
-# Test con coverage
-pnpm test:coverage
-
-# Test e2e
-pnpm test:e2e
+# Watch mode durante lo sviluppo
+pnpm test:watch
 ```
+
+Test e2e (Playwright) non sono ancora presenti — vedi [CHANGELOG.md](./CHANGELOG.md) per il piano di estrazione completa di `GameScene` (richiede E2E prima di partire).
 
 ## 📝 Licenza
 
