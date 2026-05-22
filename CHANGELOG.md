@@ -5,6 +5,39 @@ Tutti i cambiamenti significativi a questo progetto sono documentati in questo f
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/)
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.4.0] - 2026-05-22
+
+### Changed — Criticità MEDIE (bucket B: slim bundle + lint)
+
+- **Rimossi 60+ componenti shadcn/ui inutilizzati**
+  - Cancellata `client/src/components/ui/` interamente (chart, sidebar, carousel, calendar, table, command, drawer, sheet, form, ecc.): nessuno era importato dal runtime del game.
+  - Cancellati `client/src/hooks/`, `client/src/lib/utils.ts`, `client/src/components/ManusDialog.tsx`, `client/src/const.ts`, `components.json` (configurazione shadcn-cli) — tutti consumati solo dai componenti UI rimossi o artefatti di tooling esterno.
+  - Riscritti senza shadcn:
+    - `App.tsx`: rimossi `Toaster` (sonner) e `TooltipProvider`, mantenuti `ErrorBoundary` + `ThemeProvider` + Router.
+    - `pages/NotFound.tsx`: Tailwind puro, niente `Card`/`Button`/`lucide-react`.
+    - `components/ErrorBoundary.tsx`: rimossi `cn`, `lucide-react` (AlertTriangle/RotateCcw), classi colorate inline.
+
+- **Dipendenze rimosse da `package.json` (24 totali)**
+  - Radix UI (28 pacchetti `@radix-ui/*`), `recharts`, `embla-carousel-react`, `cmdk`, `vaul`, `react-day-picker`, `framer-motion`, `react-hook-form`, `react-resizable-panels`, `sonner`, `streamdown`, `input-otp`, `next-themes`, `lucide-react`, `@tanstack/react-query`, `axios`, `class-variance-authority`, `clsx`, `tailwind-merge`, `tailwindcss-animate`, `tw-animate-css`, `@tailwindcss/typography`, `nanoid`, `add`, `pnpm` (devDep), `tsx` (devDep), `autoprefixer` (devDep), `@builder.io/vite-plugin-jsx-loc`, `vite-plugin-manus-runtime`.
+  - Runtime ridotto a: `phaser`, `react`, `react-dom`, `express`, `wouter`, `zod`.
+
+- **Bundle size dopo cleanup** (`pnpm build`):
+  - JS: **1783 kB → 1466 kB** (-317 kB raw, gzip 434 → 410 kB)
+  - CSS: **112 kB → 17 kB** (-77%, gzip 17.5 → 4.0 kB)
+  - HTML inline asset (font preload + dati): 365 kB → 0 (era artefatto di manus-runtime, ora niente)
+  - Nessuna funzionalita' del gioco intaccata; il grosso del JS residuo è Phaser stesso.
+
+- **`vite.config.ts` ripulito**
+  - Rimossi `@builder.io/vite-plugin-jsx-loc` e `vite-plugin-manus-runtime` (entrambi tooling esterno proprietario di un IDE di terze parti).
+  - Rimossi gli `allowedHosts` `.manus*.computer` dalla config server (esponevano l'app a domini di tooling esterno).
+  - Rimosso alias `@assets` non utilizzato.
+
+- **ESLint flat config** (nuovo `eslint.config.js`)
+  - `@eslint/js` + `typescript-eslint` + `eslint-plugin-react-hooks` (flat config, ESLint 9).
+  - Regole attive: `react-hooks/rules-of-hooks` (error), `exhaustive-deps` (warn), `no-explicit-any` (warn), `no-unused-vars` con escape `^_` (warn), `no-empty` con `allowEmptyCatch` (error).
+  - Script `pnpm lint` e step "Lint" aggiunto a `.github/workflows/ci.yml` fra `check` e `build`.
+  - Pulite 2 variabili inutilizzate (`spacing` in `IntroScene`, `title` in `MenuScene`); 0 errori, 0 warning sul codice corrente.
+
 ## [1.3.0] - 2026-05-22
 
 ### Changed — Criticità MEDIE (bucket A: hardening dati e audio)

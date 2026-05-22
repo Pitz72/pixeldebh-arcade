@@ -1,6 +1,4 @@
-import { cn } from "@/lib/utils";
-import { AlertTriangle, RotateCcw } from "lucide-react";
-import { Component, ReactNode } from "react";
+import { Component, type ReactNode } from "react";
 
 interface Props {
   children: ReactNode;
@@ -24,31 +22,22 @@ class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex items-center justify-center min-h-screen p-8 bg-background">
+        <div className="flex items-center justify-center min-h-screen p-8 bg-slate-900 text-slate-100">
           <div className="flex flex-col items-center w-full max-w-2xl p-8">
-            <AlertTriangle
-              size={48}
-              className="text-destructive mb-6 flex-shrink-0"
-            />
+            <div className="text-4xl mb-4">!</div>
+            <h2 className="text-xl mb-4">Si e' verificato un errore inatteso.</h2>
 
-            <h2 className="text-xl mb-4">An unexpected error occurred.</h2>
-
-            <div className="p-4 w-full rounded bg-muted overflow-auto mb-6">
-              <pre className="text-sm text-muted-foreground whitespace-break-spaces">
+            <div className="p-4 w-full rounded bg-slate-800 overflow-auto mb-6">
+              <pre className="text-sm text-slate-300 whitespace-break-spaces">
                 {this.state.error?.stack}
               </pre>
             </div>
 
             <button
               onClick={() => window.location.reload()}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-lg",
-                "bg-primary text-primary-foreground",
-                "hover:opacity-90 cursor-pointer"
-              )}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
             >
-              <RotateCcw size={16} />
-              Reload Page
+              Ricarica la pagina
             </button>
           </div>
         </div>

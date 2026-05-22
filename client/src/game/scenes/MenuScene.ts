@@ -20,7 +20,7 @@ export class MenuScene extends Phaser.Scene {
     this.add.rectangle(0, 0, width, height, 0xff9933).setOrigin(0);
 
     // Titolo del gioco
-    const title = this.add.text(width / 2, height / 3, "PixelDebh's\nRetro Rescue", {
+    this.add.text(width / 2, height / 3, "PixelDebh's\nRetro Rescue", {
       fontFamily: '"Press Start 2P", "Courier New", monospace',
       fontSize: '32px',
       color: '#2d4a3e',

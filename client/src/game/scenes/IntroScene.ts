@@ -115,8 +115,8 @@ export class IntroScene extends Phaser.Scene {
       this.soundManager.playCollect();
       
       const collectiblesY = centerY + 80;
-      const spacing = 80;
-      
+
+
       const items = [
         { sprite: 'floppy', label: 'FLOPPY\n10 pts', x: centerX - 160 },
         { sprite: 'cartridge', label: 'CARTUCCIA\n15 pts', x: centerX - 80 },
