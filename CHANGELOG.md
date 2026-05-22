@@ -5,6 +5,21 @@ Tutti i cambiamenti significativi a questo progetto sono documentati in questo f
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/)
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.3.0] - 2026-05-22
+
+### Changed — Criticità MEDIE (bucket A: hardening dati e audio)
+
+- **HighScoreManager — validazione Zod + gestione quota**
+  - Tutti i dati letti da `localStorage` passano da `HighScoreListSchema` (Zod): `score` intero 0–9_999_999, `level` 1–99, `playerName` 1–32 char, `date` stringa.
+  - Se il JSON è corrotto o lo schema fallisce, lo storage viene azzerato in modo controllato (`clearHighScores`) e si ritorna lista vuota anziché propagare oggetti malformati al gioco.
+  - `saveScore` distingue esplicitamente `QuotaExceededError` da errori generici nei log, in modo che un utente con storage pieno o disabilitato sia visibile in console.
+  - Esportato il tipo `HighScore` (inferito dallo schema) per riuso lato UI.
+
+- **SoundManager — AudioContext singleton + fallback esplicito**
+  - L'`AudioContext` è ora un singleton statico (`SoundManager.sharedContext`) condiviso fra le quattro scene del gioco (Intro/Menu/Game/GameOver). Prima ogni `new SoundManager()` in `init()` di scena allocava un context nuovo: risorsa costosa, soggetta al limite di context per tab.
+  - L'inizializzazione viene tentata una sola volta (`initAttempted`); se Web Audio non è disponibile (vecchi browser, contesti embedded) viene loggato un warning **una sola volta** e il gioco prosegue in modalità muta in modo deterministico anziché silenziosamente.
+  - Rimosso `(window as any).webkitAudioContext`: tipizzato con `WebkitWindow & { webkitAudioContext?: typeof AudioContext }`.
+
 ## [1.2.0] - 2026-05-22
 
 ### Fixed — Criticità GRAVI

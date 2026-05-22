@@ -1,14 +1,46 @@
+type WebkitWindow = Window & { webkitAudioContext?: typeof AudioContext };
+
 /**
- * Gestore degli effetti sonori procedurali usando Web Audio API
+ * Gestore degli effetti sonori procedurali usando Web Audio API.
+ * L'AudioContext è un singleton process-wide: una sola istanza condivisa
+ * fra tutte le scene Phaser (Intro/Menu/Game/GameOver), per evitare di
+ * allocare risorse audio ad ogni transizione di scena.
  */
 export class SoundManager {
+  private static sharedContext: AudioContext | null = null;
+  private static initAttempted = false;
+  private static unavailableLogged = false;
+
   private audioContext: AudioContext | null = null;
 
   constructor() {
+    this.audioContext = SoundManager.getAudioContext();
+  }
+
+  private static getAudioContext(): AudioContext | null {
+    if (this.sharedContext) return this.sharedContext;
+    if (this.initAttempted) return null;
+    this.initAttempted = true;
+
+    if (typeof window === 'undefined') return null;
+
+    const Ctor =
+      window.AudioContext || (window as WebkitWindow).webkitAudioContext;
+
+    if (!Ctor) {
+      if (!this.unavailableLogged) {
+        console.warn('[SoundManager] Web Audio API non disponibile in questo browser — il gioco continuerà in modalità muta.');
+        this.unavailableLogged = true;
+      }
+      return null;
+    }
+
     try {
-      this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.sharedContext = new Ctor();
+      return this.sharedContext;
     } catch (e) {
-      console.warn('Web Audio API non supportata');
+      console.warn('[SoundManager] AudioContext non istanziabile — modalità muta attiva.', e);
+      return null;
     }
   }
 
