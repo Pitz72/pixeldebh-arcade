@@ -57,6 +57,10 @@ export class GameScene extends Phaser.Scene {
   private wallSegments: WallSegment[] = [];
   private walls!: Phaser.Physics.Arcade.StaticGroup;
 
+  // Tracking risorse per evitare memory leak su shutdown/level change
+  private activeTimers: Phaser.Time.TimerEvent[] = [];
+  private enemyTimers: Map<Phaser.Physics.Arcade.Sprite, Phaser.Time.TimerEvent[]> = new Map();
+
   constructor() {
     super({ key: 'GameScene' });
   }
@@ -124,6 +128,45 @@ export class GameScene extends Phaser.Scene {
         this.scene.pause();
         this.isPaused = true;
         this.showPauseMenu();
+      }
+    });
+
+    // Cleanup totale su shutdown della scena: cancella timer e tween per evitare leak
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.cleanupScene, this);
+    this.events.once(Phaser.Scenes.Events.DESTROY, this.cleanupScene, this);
+  }
+
+  private cleanupScene() {
+    // Cancella tutti i timer di scena tracciati
+    this.activeTimers.forEach((t) => {
+      if (t) this.time.removeEvent(t);
+    });
+    this.activeTimers = [];
+
+    // Cancella timer per-nemico
+    this.enemyTimers.forEach((timers) => {
+      timers.forEach((t) => {
+        if (t) this.time.removeEvent(t);
+      });
+    });
+    this.enemyTimers.clear();
+
+    // Stoppa tutti i tween della scena (animazioni con repeat:-1)
+    this.tweens.killAll();
+  }
+
+  private registerEnemyTimer(enemy: Phaser.Physics.Arcade.Sprite, timer: Phaser.Time.TimerEvent) {
+    const list = this.enemyTimers.get(enemy) || [];
+    list.push(timer);
+    this.enemyTimers.set(enemy, list);
+    // Quando il nemico viene distrutto, rimuovi i suoi timer
+    enemy.once(Phaser.GameObjects.Events.DESTROY, () => {
+      const timers = this.enemyTimers.get(enemy);
+      if (timers) {
+        timers.forEach((t) => {
+          if (t) this.time.removeEvent(t);
+        });
+        this.enemyTimers.delete(enemy);
       }
     });
   }
@@ -304,9 +347,9 @@ export class GameScene extends Phaser.Scene {
         });
         break;
 
-      case EnemyType.BUG:
+      case EnemyType.BUG: {
         // Insegue il giocatore
-        this.time.addEvent({
+        const bugTimer = this.time.addEvent({
           delay: 100,
           callback: () => {
             if (this.player && enemy.active) {
@@ -315,7 +358,9 @@ export class GameScene extends Phaser.Scene {
           },
           loop: true
         });
+        this.registerEnemyTimer(enemy, bugTimer);
         break;
+      }
 
       case EnemyType.DRM:
         // Movimento lento e costante
@@ -330,18 +375,17 @@ export class GameScene extends Phaser.Scene {
         });
         break;
 
-      case EnemyType.HATER:
+      case EnemyType.HATER: {
         // Lancia proiettili periodicamente
-        this.time.addEvent({
+        const haterTimer = this.time.addEvent({
           delay: 3000,
           callback: () => {
             if (enemy.active && this.player) {
               // Crea un proiettile che rallenta
               const projectile = this.add.circle(enemy.x, enemy.y, 4, 0xff0000);
               this.physics.add.existing(projectile);
-              const body = projectile.body as Phaser.Physics.Arcade.Body;
               this.physics.moveToObject(projectile, this.player, 150);
-              
+
               // Collisione proiettile con giocatore
               this.physics.add.overlap(this.player, projectile, () => {
                 if (!this.isInvincible) {
@@ -352,20 +396,22 @@ export class GameScene extends Phaser.Scene {
                 }
                 projectile.destroy();
               });
-              
+
               // Distruggi proiettile dopo 5 secondi
               this.time.delayedCall(5000, () => {
-                if (projectile) projectile.destroy();
+                if (projectile && projectile.active) projectile.destroy();
               });
             }
           },
           loop: true
         });
+        this.registerEnemyTimer(enemy, haterTimer);
         break;
+      }
 
-      case EnemyType.LAG:
+      case EnemyType.LAG: {
         // Movimento a scatti
-        this.time.addEvent({
+        const lagTimer = this.time.addEvent({
           delay: Phaser.Math.Between(500, 1500),
           callback: () => {
             if (enemy.active) {
@@ -375,15 +421,17 @@ export class GameScene extends Phaser.Scene {
                 Math.cos(rad) * speed,
                 Math.sin(rad) * speed
               );
-              
+
               this.time.delayedCall(Phaser.Math.Between(300, 800), () => {
-                enemy.setVelocity(0, 0);
+                if (enemy.active) enemy.setVelocity(0, 0);
               });
             }
           },
           loop: true
         });
+        this.registerEnemyTimer(enemy, lagTimer);
         break;
+      }
     }
   }
 
