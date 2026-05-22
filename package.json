@@ -1,6 +1,6 @@
 {
   "name": "pixeldebh-arcade",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "type": "module",
   "license": "MIT",
   "scripts": {
@@ -10,6 +10,8 @@
     "preview": "vite preview --host",
     "check": "tsc --noEmit",
     "lint": "eslint client/src server --ext .ts,.tsx",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "format": "prettier --write ."
   },
   "dependencies": {
@@ -32,6 +34,7 @@
     "eslint": "^9.18.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "globals": "^15.14.0",
+    "jsdom": "^25.0.1",
     "postcss": "^8.4.47",
     "prettier": "^3.6.2",
     "tailwindcss": "^4.1.14",

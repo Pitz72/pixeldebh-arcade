@@ -5,6 +5,41 @@ Tutti i cambiamenti significativi a questo progetto sono documentati in questo f
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/)
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.5.0] - 2026-05-22
+
+### Changed — Criticità MEDIE (bucket C: estrazione HUD + test suite)
+
+- **HUD estratto da GameScene** (`client/src/game/ui/HUD.ts`)
+  - Spostati i 4 `Phaser.GameObjects.Text` (score, lives, level, collectibles) e i relativi updater in una classe dedicata con API minimale: `setScore(n)`, `setLives(n)`, `setCollectiblesRemaining(n)`.
+  - `GameScene` non manipola più direttamente nodi visuali HUD; il metodo `updateLivesDisplay` è stato rimosso.
+  - GameScene: 815 → 803 righe (la maggior parte del codice rimosso era boilerplate di stile); separation of concerns chiara fra logica di gameplay e presentazione HUD.
+  - L'estrazione completa di Player ed EnemyManager **non è stata fatta in questo bucket**: vedi note finali.
+
+- **Test suite con Vitest** (`client/src/**/*.test.ts`)
+  - Nuovo `vitest.config.ts` con `environment: 'jsdom'`, alias `@`/`@shared` allineati a Vite.
+  - `HighScoreManager.test.ts` — 13 test:
+    - roundtrip save→retrieve, default `playerName`
+    - ordinamento decrescente
+    - troncamento a `MAX_SCORES = 10`
+    - `isHighScore` (sotto-piena e piena)
+    - `getTopScore` (vuoto + popolato)
+    - recovery su JSON corrotto, schema invalido, valori out-of-range (verifica anche reset effettivo dello storage)
+    - `clearHighScores`
+    - `QuotaExceededError` → `saveScore` ritorna `false`
+  - `LevelData.test.ts` — 10 test:
+    - `getLevelConfig` clamp basso/alto, level 1-based, mai null
+    - `getEraName` mapping completo + fallback
+    - dataset `LEVELS`: ≥9 livelli, numeri consecutivi, `powerUpChance ∈ [0,1]`, `enemySpeedMultiplier > 0`, almeno un collectible per livello
+  - **23/23 test passano** in ~13ms (jsdom).
+  - Aggiunti script `pnpm test` (run one-shot) e `pnpm test:watch`.
+  - Aggiunto step "Unit tests" in `.github/workflows/ci.yml` fra Lint e Build.
+  - Dipendenza nuova: `jsdom ^25` (devDep, necessaria per `Storage`/`DOMException`).
+
+### Notes / Debito tecnico residuo
+
+- **Split completo di GameScene (Player / EnemyManager) deferred.**
+  Il refactor avrebbe toccato il loop di gioco (movimento, AI nemici, gestione timer/tween) che era già stato hardened in v1.1.0 ma resta privo di test di integrazione automatici. Procedere senza la possibilità di smoke-test manuale in browser su tutti i 9 livelli + 5 tipi di nemici sarebbe stato un rischio sproporzionato rispetto al beneficio (la criticità è "manutenibilità", non "correttezza"). Marcato come future work in un bucket dedicato quando ci sarà copertura E2E (Playwright).
+
 ## [1.4.0] - 2026-05-22
 
 ### Changed — Criticità MEDIE (bucket B: slim bundle + lint)

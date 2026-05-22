@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import { SpriteGenerator } from '../utils/SpriteGenerator';
-import { getLevelConfig, getEraName, type LevelConfig } from '../data/LevelData';
+import { getLevelConfig, type LevelConfig } from '../data/LevelData';
 import { SoundManager } from '../utils/SoundManager';
 import { LevelGenerator, type WallSegment } from '../utils/LevelGenerator';
+import { HUD } from '../ui/HUD';
 
 type ArcadeColliderObject =
   | Phaser.Types.Physics.Arcade.GameObjectWithBody
@@ -51,10 +52,7 @@ export class GameScene extends Phaser.Scene {
   private collectiblesRemaining: number = 0;
   private levelConfig!: LevelConfig;
   
-  private scoreText!: Phaser.GameObjects.Text;
-  private livesText!: Phaser.GameObjects.Text;
-  private levelText!: Phaser.GameObjects.Text;
-  private collectiblesText!: Phaser.GameObjects.Text;
+  private hud!: HUD;
   
   private playerSpeed: number = 160;
   private isInvincible: boolean = false;
@@ -472,41 +470,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private createUI() {
-    const { width } = this.cameras.main;
-    
-    this.scoreText = this.add.text(16, 16, 'Punteggio: 0', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '18px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 3
-    });
-
-    this.livesText = this.add.text(width / 2, 16, 'Vite: ❤️❤️❤️', {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '18px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 3
-    }).setOrigin(0.5, 0);
-
-    this.levelText = this.add.text(width - 16, 16, `${getEraName(this.levelConfig.era)} - Livello ${this.level}`, {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '18px',
-      color: '#ffffff',
-      stroke: '#000000',
-      strokeThickness: 3
-    }).setOrigin(1, 0);
-
-    // Contatore oggetti rimanenti
-    const totalCollectibles = this.collectiblesRemaining;
-    this.collectiblesText = this.add.text(16, 45, `Oggetti: ${totalCollectibles}/${totalCollectibles}`, {
-      fontFamily: 'Arial Black, sans-serif',
-      fontSize: '16px',
-      color: '#ffcc00',
-      stroke: '#000000',
-      strokeThickness: 3
-    });
+    this.hud = new HUD(this, this.levelConfig, this.level, this.collectiblesRemaining);
   }
 
   private setupCollisions() {
@@ -571,11 +535,10 @@ export class GameScene extends Phaser.Scene {
     const points = sprite.getData('points');
     
     this.score += points;
-    this.scoreText.setText(`Punteggio: ${this.score}`);
-    
+    this.hud.setScore(this.score);
+
     this.collectiblesRemaining--;
-    const totalCollectibles = this.collectibles.getLength() + this.collectiblesRemaining;
-    this.collectiblesText.setText(`Oggetti: ${this.collectiblesRemaining}/${totalCollectibles}`);
+    this.hud.setCollectiblesRemaining(this.collectiblesRemaining);
     
     sprite.destroy();
     
@@ -611,7 +574,7 @@ export class GameScene extends Phaser.Scene {
       const sprite = enemy as Phaser.Physics.Arcade.Sprite;
       sprite.destroy();
       this.score += 50;
-      this.scoreText.setText(`Punteggio: ${this.score}`);
+      this.hud.setScore(this.score);
       this.soundManager.playEnemyDestroyed();
       return;
     }
@@ -626,7 +589,7 @@ export class GameScene extends Phaser.Scene {
     // Perde una vita
     this.lives--;
     this.soundManager.playHit();
-    this.updateLivesDisplay();
+    this.hud.setLives(this.lives);
 
     if (this.lives <= 0) {
       this.gameOver();
@@ -726,11 +689,6 @@ export class GameScene extends Phaser.Scene {
       duration: 2000,
       onComplete: () => text.destroy()
     });
-  }
-
-  private updateLivesDisplay() {
-    const hearts = '❤️'.repeat(Math.max(0, this.lives));
-    this.livesText.setText(`Vite: ${hearts}`);
   }
 
   private completeLevel() {
