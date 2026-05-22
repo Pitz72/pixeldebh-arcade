@@ -4,6 +4,12 @@ import { getLevelConfig, getEraName, type LevelConfig } from '../data/LevelData'
 import { SoundManager } from '../utils/SoundManager';
 import { LevelGenerator, type WallSegment } from '../utils/LevelGenerator';
 
+type ArcadeColliderObject =
+  | Phaser.Types.Physics.Arcade.GameObjectWithBody
+  | Phaser.Tilemaps.Tile
+  | Phaser.Physics.Arcade.Body
+  | Phaser.Physics.Arcade.StaticBody;
+
 // Tipi di oggetti da collezione
 enum CollectibleType {
   FLOPPY = 'floppy',
@@ -180,7 +186,7 @@ export class GameScene extends Phaser.Scene {
     if (!this.enemies || !this.walls) return;
 
     // Controlla ogni nemico per collisioni con muri e gestisci il comportamento
-    this.enemies.children.entries.forEach((enemy: any) => {
+    this.enemies.children.entries.forEach((enemy: Phaser.GameObjects.GameObject) => {
       const sprite = enemy as Phaser.Physics.Arcade.Sprite;
       if (!sprite.active) return;
 
@@ -558,8 +564,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private collectItem(
-    player: any,
-    collectible: any
+    _player: ArcadeColliderObject,
+    collectible: ArcadeColliderObject
   ) {
     const sprite = collectible as Phaser.Physics.Arcade.Sprite;
     const points = sprite.getData('points');
@@ -597,8 +603,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private hitEnemy(
-    player: any,
-    enemy: any
+    _player: ArcadeColliderObject,
+    enemy: ArcadeColliderObject
   ) {
     if (this.isInvincible) {
       // Se invincibile, elimina il nemico
@@ -635,8 +641,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private collectPowerUp(
-    player: any,
-    powerUp: any
+    _player: ArcadeColliderObject,
+    powerUp: ArcadeColliderObject
   ) {
     const sprite = powerUp as Phaser.Physics.Arcade.Sprite;
     const type = sprite.getData('type') as PowerUpType;

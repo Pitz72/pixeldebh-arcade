@@ -5,6 +5,34 @@ Tutti i cambiamenti significativi a questo progetto sono documentati in questo f
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/)
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.2.0] - 2026-05-22
+
+### Fixed — Criticità GRAVI
+
+- **Type safety nelle callback fisiche di Phaser**
+  - Sostituito `any` con il tipo ufficiale `Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile` (alias `ArcadeColliderObject`) nei callback di collisione `collectItem`, `hitEnemy`, `collectPowerUp` in `client/src/game/scenes/GameScene.ts`.
+  - Tipizzato anche `updateEnemies` (iterazione su `enemies.children.entries`) con `Phaser.GameObjects.GameObject`.
+  - `tsc --strict --noEmit` ora copre i punti di collisione critici.
+
+- **Server Express senza security headers**
+  - Aggiunto middleware `securityHeaders` in `server/index.ts` (nessuna nuova dipendenza) che imposta:
+    - `X-Frame-Options: DENY` (anti-clickjacking)
+    - `X-Content-Type-Options: nosniff`
+    - `Referrer-Policy: strict-origin-when-cross-origin`
+    - `Permissions-Policy` restrittivo (camera/microphone/geolocation/payment disabilitati)
+    - `Content-Security-Policy` coerente con i Google Fonts realmente usati (`fonts.googleapis.com`, `fonts.gstatic.com`)
+  - Disabilitato `X-Powered-By` per ridurre il fingerprinting.
+
+- **CI/CD assente**
+  - Aggiunto workflow `.github/workflows/ci.yml`: su `push`/`pull_request` verso `main` esegue `pnpm install --frozen-lockfile`, `pnpm check` e `pnpm build` su Ubuntu + Node 22 + pnpm 10.4.1.
+
+- **Patch wouter sospetta rimossa**
+  - Rimossa la directory `patches/` e l'entry `pnpm.patchedDependencies` da `package.json`. La patch iniettava `window.__WOUTER_ROUTES__` (artefatto di un tool di build esterno) ed era inoltre incoerente con la versione `wouter@3.3.5` realmente installata: superficie d'attacco eliminata.
+
+### Notes
+
+- I tween con `repeat: -1` erano già stati indirizzati in v1.1.0 dal cleanup `SHUTDOWN`/`DESTROY` di scena (`tweens.killAll()`).
+
 ## [1.1.0] - 2026-05-22
 
 ### Fixed — Criticità GRAVISSIME
