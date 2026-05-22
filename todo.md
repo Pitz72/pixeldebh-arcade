@@ -74,8 +74,8 @@
 ## Ottimizzazione e Polish
 - [x] Responsive design (desktop e mobile)
 - [x] Ottimizzazione performance
-- [ ] Sistema salvataggio punteggio locale
-- [ ] Classifica high scores
+- [x] Sistema salvataggio punteggio locale (HighScoreManager + Zod, v1.3.0)
+- [x] Classifica high scores (top 10, MAX_SCORES)
 - [x] Effetti particellari
 - [x] Screen shake e juice
 - [x] Tutorial/istruzioni
@@ -121,8 +121,24 @@
 - [x] Migliorare GameOverScene con statistiche
 
 ## Documentazione GitHub
-- [x] README.md completo
-- [x] CONTRIBUTING.md
+- [x] README.md completo (allineato in v1.6.0)
+- [x] CONTRIBUTING.md (allineato in v1.6.0)
 - [x] LICENSE
 - [x] .gitignore
-- [x] Documentazione tecnica architettura (ANALISI_CRITICA.md)
+- [x] CHANGELOG.md (Keep a Changelog, dalla v1.1.0)
+- [x] CI GitHub Actions (check + lint + test + build + audit)
+- [x] ESLint flat config (v1.4.0)
+- [x] Test suite Vitest (HighScoreManager + LevelData, v1.5.0)
+
+## Roadmap aperta (feature, non bug)
+- [ ] Controlli touch per mobile
+- [ ] Livelli Bonus (raccolta a tempo)
+- [ ] Musica di sottofondo per le 3 ere
+- [ ] Migliorare sprite PixelDebh (confronto con logo)
+- [ ] Bilanciare spawn power-up
+- [ ] Feedback visivo collisione muri (opzionale)
+- [ ] E2E Playwright (prerequisito per refactor Player/EnemyManager)
+- [ ] Bundle code-splitting (estrarre Phaser in chunk vendor)
+- [ ] Coverage Vitest (`@vitest/coverage-v8`)
+- [ ] Server-side high score (richiede auth)
+- [ ] i18n (EN/ES/FR/DE)

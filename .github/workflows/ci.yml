@@ -28,6 +28,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Security audit (non-blocking)
+        run: pnpm audit --prod --audit-level=high
+        continue-on-error: true
+
       - name: TypeScript type-check
         run: pnpm check
 

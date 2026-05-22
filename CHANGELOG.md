@@ -5,7 +5,28 @@ Tutti i cambiamenti significativi a questo progetto sono documentati in questo f
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/)
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/).
 
-## [1.6.0] - 2026-05-22
+## [1.7.0] - 2026-05-23
+
+### Changed — Hygiene release
+
+- **Toolchain pinning**
+  - Aggiunto `engines: { node: ">=22", pnpm: ">=10" }` in `package.json`.
+  - Aggiunto `.nvmrc` (Node 22): allinea dev locale e CI.
+  - `@types/node` ridimensionato da `^24.7.0` a `^22.10.0` per matchare la versione di Node effettivamente usata in CI.
+
+- **CI: security audit**
+  - Aggiunto step `pnpm audit --prod --audit-level=high` in `.github/workflows/ci.yml` (non bloccante via `continue-on-error: true`): nuove vulnerabilità note finiscono nel log della build senza fallire la pipeline finché non vengono valutate.
+
+- **Repository hygiene**
+  - Rimosso remote orfano `manus-s3` (s3://vida-prod-gitrepo/...) dal clone locale. `origin` è ora l'unico remote ed è GitHub.
+  - Date in `CHANGELOG.md` corrette da `2026-05-22` a `2026-05-23` (l'intera serie 1.1.0–1.6.0 era stata pushata nell'arco della stessa sessione del 23/05).
+
+- **`todo.md` riconciliato col codice reale**
+  - Risolta incoerenza: "Sistema salvataggio punteggio locale" e "Classifica high scores" erano segnati `[ ]` mentre erano implementati da tempo (e hardened con Zod in v1.3.0).
+  - Rimosso riferimento a `ANALISI_CRITICA.md` (file mai esistito nel repo).
+  - Sezione finale "Roadmap aperta" separa esplicitamente feature future dal debito chiuso, in modo che un nuovo contributore veda solo task realmente aperti.
+
+## [1.6.0] - 2026-05-23
 
 ### Changed — Criticità LIEVI (polish: dedup sprite + docs allineate)
 
@@ -29,7 +50,7 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 - **ADR (Architecture Decision Records)**: non introdotti. Per un progetto solo-developer con CHANGELOG già dettagliato, gli ADR sarebbero overhead di processo senza beneficio reale. Le decisioni architetturali significative restano tracciate nei changelog di versione (es. v1.4.0 per la rimozione di shadcn, v1.5.0 per il deferimento del refactor di GameScene).
 - **Hardcoded UI strings in GameScene**: parzialmente affrontato in v1.5.0 con `HUD.ts` (costanti di stile estratte come `TITLE_STYLE`/`COUNTER_STYLE`). Il residuo (testi di livello completato, vittoria, pause menu) è confinato in 3 punti — non vale l'astrazione.
 
-## [1.5.0] - 2026-05-22
+## [1.5.0] - 2026-05-23
 
 ### Changed — Criticità MEDIE (bucket C: estrazione HUD + test suite)
 
@@ -64,7 +85,7 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 - **Split completo di GameScene (Player / EnemyManager) deferred.**
   Il refactor avrebbe toccato il loop di gioco (movimento, AI nemici, gestione timer/tween) che era già stato hardened in v1.1.0 ma resta privo di test di integrazione automatici. Procedere senza la possibilità di smoke-test manuale in browser su tutti i 9 livelli + 5 tipi di nemici sarebbe stato un rischio sproporzionato rispetto al beneficio (la criticità è "manutenibilità", non "correttezza"). Marcato come future work in un bucket dedicato quando ci sarà copertura E2E (Playwright).
 
-## [1.4.0] - 2026-05-22
+## [1.4.0] - 2026-05-23
 
 ### Changed — Criticità MEDIE (bucket B: slim bundle + lint)
 
@@ -97,7 +118,7 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
   - Script `pnpm lint` e step "Lint" aggiunto a `.github/workflows/ci.yml` fra `check` e `build`.
   - Pulite 2 variabili inutilizzate (`spacing` in `IntroScene`, `title` in `MenuScene`); 0 errori, 0 warning sul codice corrente.
 
-## [1.3.0] - 2026-05-22
+## [1.3.0] - 2026-05-23
 
 ### Changed — Criticità MEDIE (bucket A: hardening dati e audio)
 
@@ -112,7 +133,7 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
   - L'inizializzazione viene tentata una sola volta (`initAttempted`); se Web Audio non è disponibile (vecchi browser, contesti embedded) viene loggato un warning **una sola volta** e il gioco prosegue in modalità muta in modo deterministico anziché silenziosamente.
   - Rimosso `(window as any).webkitAudioContext`: tipizzato con `WebkitWindow & { webkitAudioContext?: typeof AudioContext }`.
 
-## [1.2.0] - 2026-05-22
+## [1.2.0] - 2026-05-23
 
 ### Fixed — Criticità GRAVI
 
@@ -140,7 +161,7 @@ e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/)
 
 - I tween con `repeat: -1` erano già stati indirizzati in v1.1.0 dal cleanup `SHUTDOWN`/`DESTROY` di scena (`tweens.killAll()`).
 
-## [1.1.0] - 2026-05-22
+## [1.1.0] - 2026-05-23
 
 ### Fixed — Criticità GRAVISSIME
 
