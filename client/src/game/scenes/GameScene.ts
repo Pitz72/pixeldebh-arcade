@@ -4,6 +4,8 @@ import { getLevelConfig, type LevelConfig } from '../data/LevelData';
 import { SoundManager } from '../utils/SoundManager';
 import { LevelGenerator, type WallSegment } from '../utils/LevelGenerator';
 import { HUD } from '../ui/HUD';
+import { Player } from '../entities/Player';
+import { EnemyManager } from '../entities/EnemyManager';
 
 type ArcadeColliderObject =
   | Phaser.Types.Physics.Arcade.GameObjectWithBody
@@ -11,59 +13,47 @@ type ArcadeColliderObject =
   | Phaser.Physics.Arcade.Body
   | Phaser.Physics.Arcade.StaticBody;
 
-// Tipi di oggetti da collezione
 enum CollectibleType {
   FLOPPY = 'floppy',
   CARTRIDGE = 'cartridge',
   CD = 'cd',
   COMPUTER = 'computer',
-  CONSOLE = 'console'
+  CONSOLE = 'console',
 }
 
-// Tipi di nemici
-enum EnemyType {
-  GLITCH = 'glitch',
-  BUG = 'bug',
-  LAG = 'lag',
-  DRM = 'drm',
-  HATER = 'hater'
-}
-
-// Tipi di power-up
 enum PowerUpType {
   COFFEE = 'coffee',
   JOYSTICK = 'joystick',
   BUBBLE = 'bubble',
-  CRT = 'crt'
+  CRT = 'crt',
 }
 
+const PLAYER_BOOST_SPEED = 240;
+const PLAYER_BOOST_MS = 8000;
+const PLAYER_INVINCIBLE_POWERUP_MS = 10000;
+const PLAYER_INVINCIBLE_HIT_MS = 2000;
+const CRT_STUN_MS = 3000;
+
 export class GameScene extends Phaser.Scene {
-  private player!: Phaser.Physics.Arcade.Sprite;
-  private cursors!: Phaser.Types.Input.Keyboard.CursorKeys;
-  private wasd!: { up: Phaser.Input.Keyboard.Key; down: Phaser.Input.Keyboard.Key; left: Phaser.Input.Keyboard.Key; right: Phaser.Input.Keyboard.Key };
   private isPaused: boolean = false;
   private collectibles!: Phaser.Physics.Arcade.Group;
-  private enemies!: Phaser.Physics.Arcade.Group;
   private powerUps!: Phaser.Physics.Arcade.Group;
-  
+
   private score: number = 0;
   private lives: number = 3;
   private level: number = 1;
   private collectiblesRemaining: number = 0;
   private levelConfig!: LevelConfig;
-  
+
   private hud!: HUD;
-  
-  private playerSpeed: number = 160;
-  private isInvincible: boolean = false;
-  private hasShield: boolean = false;
   private soundManager!: SoundManager;
   private wallSegments: WallSegment[] = [];
   private walls!: Phaser.Physics.Arcade.StaticGroup;
 
-  // Tracking risorse per evitare memory leak su shutdown/level change
+  private player!: Player;
+  private enemyManager!: EnemyManager;
+
   private activeTimers: Phaser.Time.TimerEvent[] = [];
-  private enemyTimers: Map<Phaser.Physics.Arcade.Sprite, Phaser.Time.TimerEvent[]> = new Map();
 
   constructor() {
     super({ key: 'GameScene' });
@@ -77,15 +67,14 @@ export class GameScene extends Phaser.Scene {
       level: this.level,
       collectiblesRemaining: this.collectiblesRemaining,
       isPaused: this.isPaused,
-      isInvincible: this.isInvincible,
-      hasShield: this.hasShield,
+      isInvincible: this.player?.isInvincible ?? false,
+      hasShield: this.player?.hasShield ?? false,
       playerX: this.player?.x ?? null,
       playerY: this.player?.y ?? null,
     };
   }
 
   preload() {
-    // Genera tutti gli sprite del gioco
     SpriteGenerator.generateAll(this);
   }
 
@@ -100,42 +89,20 @@ export class GameScene extends Phaser.Scene {
   create() {
     const { width, height } = this.cameras.main;
 
-    // Sfondo basato sull'era
     this.add.rectangle(0, 0, width, height, this.levelConfig.backgroundColor).setOrigin(0);
-    
-    // Griglia di sfondo stile circuito
     this.createBackgroundGrid();
-
-    // Creazione muri/barriere
     this.createWalls();
 
-    // Creazione giocatore
-    this.createPlayer();
+    this.player = new Player(this);
+    this.player.create(width / 2, height / 2);
 
-    // Creazione oggetti da collezione
     this.createCollectibles();
 
-    // Creazione nemici
-    this.createEnemies();
+    this.enemyManager = new EnemyManager(this);
+    this.enemyManager.create(this.levelConfig, this.wallSegments, this.player);
 
-    // Creazione power-ups
     this.createPowerUps();
-
-    // UI
     this.createUI();
-
-    // Input
-    this.cursors = this.input.keyboard!.createCursorKeys();
-    
-    // Aggiungi supporto WASD
-    this.wasd = {
-      up: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.W),
-      down: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.S),
-      left: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.A),
-      right: this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.D)
-    };
-
-    // Collisioni
     this.setupCollisions();
 
     // Pausa: il listener di scena attiva la pausa; il resume e' gestito da un
@@ -148,92 +115,25 @@ export class GameScene extends Phaser.Scene {
       this.showPauseMenu();
     });
 
-    // Cleanup totale su shutdown della scena: cancella timer e tween per evitare leak
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.cleanupScene, this);
     this.events.once(Phaser.Scenes.Events.DESTROY, this.cleanupScene, this);
   }
 
+  update() {
+    this.player?.update();
+    this.enemyManager?.update(this.walls);
+  }
+
   private cleanupScene() {
-    // Cancella tutti i timer di scena tracciati
     this.activeTimers.forEach((t) => {
       if (t) this.time.removeEvent(t);
     });
     this.activeTimers = [];
 
-    // Cancella timer per-nemico
-    this.enemyTimers.forEach((timers) => {
-      timers.forEach((t) => {
-        if (t) this.time.removeEvent(t);
-      });
-    });
-    this.enemyTimers.clear();
+    this.enemyManager?.cleanup();
 
     // Stoppa tutti i tween della scena (animazioni con repeat:-1)
     this.tweens.killAll();
-  }
-
-  private registerEnemyTimer(enemy: Phaser.Physics.Arcade.Sprite, timer: Phaser.Time.TimerEvent) {
-    const list = this.enemyTimers.get(enemy) || [];
-    list.push(timer);
-    this.enemyTimers.set(enemy, list);
-    // Quando il nemico viene distrutto, rimuovi i suoi timer
-    enemy.once(Phaser.GameObjects.Events.DESTROY, () => {
-      const timers = this.enemyTimers.get(enemy);
-      if (timers) {
-        timers.forEach((t) => {
-          if (t) this.time.removeEvent(t);
-        });
-        this.enemyTimers.delete(enemy);
-      }
-    });
-  }
-
-  update() {
-    this.handlePlayerMovement();
-    this.updateEnemies();
-  }
-
-  private updateEnemies() {
-    if (!this.enemies || !this.walls) return;
-
-    // Controlla ogni nemico per collisioni con muri e gestisci il comportamento
-    this.enemies.children.entries.forEach((enemy: Phaser.GameObjects.GameObject) => {
-      const sprite = enemy as Phaser.Physics.Arcade.Sprite;
-      if (!sprite.active) return;
-
-      const type = sprite.getData('type');
-      const speed = sprite.getData('speed');
-
-      // Per nemici che usano velocity (LAG), inverti direzione se collidono
-      if (type === EnemyType.LAG && sprite.body) {
-        const body = sprite.body as Phaser.Physics.Arcade.Body;
-        if (body.blocked.left || body.blocked.right) {
-          body.velocity.x *= -1;
-        }
-        if (body.blocked.up || body.blocked.down) {
-          body.velocity.y *= -1;
-        }
-      }
-
-      // Per BUG che insegue, verifica se può raggiungere il giocatore
-      if (type === EnemyType.BUG && sprite.body) {
-        const body = sprite.body as Phaser.Physics.Arcade.Body;
-        // Se bloccato, prova a muoverti in direzione alternativa
-        if ((body.blocked.left || body.blocked.right || body.blocked.up || body.blocked.down) && this.player) {
-          const angle = Phaser.Math.Angle.Between(
-            sprite.x, sprite.y,
-            this.player.x, this.player.y
-          );
-          // Aggiungi offset casuale per evitare blocco permanente
-          const offset = Phaser.Math.Between(-90, 90) * (Math.PI / 180);
-          const newAngle = angle + offset;
-          sprite.setVelocity(
-            Math.cos(newAngle) * speed,
-            Math.sin(newAngle) * speed
-          );
-        }
-      }
-    });
   }
 
   private createBackgroundGrid() {
@@ -241,12 +141,9 @@ export class GameScene extends Phaser.Scene {
     const graphics = this.add.graphics();
     graphics.lineStyle(1, this.levelConfig.gridColor, 0.5);
 
-    // Linee verticali
     for (let x = 0; x < width; x += 40) {
       graphics.lineBetween(x, 0, x, height);
     }
-
-    // Linee orizzontali
     for (let y = 0; y < height; y += 40) {
       graphics.lineBetween(0, y, width, y);
     }
@@ -255,28 +152,19 @@ export class GameScene extends Phaser.Scene {
   private createWalls() {
     const { width, height } = this.cameras.main;
     this.wallSegments = LevelGenerator.generateWalls(this.level, width, height);
-    
-    // Calcola colore muri basato sul colore della griglia
     const wallColor = this.levelConfig.gridColor + 0x101010;
     this.walls = LevelGenerator.createWallsInScene(this, this.wallSegments, wallColor);
   }
 
-  private createPlayer() {
-    const { width, height } = this.cameras.main;
-    this.player = this.physics.add.sprite(width / 2, height / 2, 'player');
-    this.player.setCollideWorldBounds(true);
-  }
-
   private createCollectibles() {
     this.collectibles = this.physics.add.group();
-    
-    // Creiamo diversi tipi di oggetti da collezione basati sul livello
+
     const types = [
       { type: CollectibleType.FLOPPY, points: 10, count: this.levelConfig.collectibles.floppy },
       { type: CollectibleType.CARTRIDGE, points: 15, count: this.levelConfig.collectibles.cartridge },
       { type: CollectibleType.CD, points: 20, count: this.levelConfig.collectibles.cd },
       { type: CollectibleType.COMPUTER, points: 50, count: this.levelConfig.collectibles.computer },
-      { type: CollectibleType.CONSOLE, points: 100, count: this.levelConfig.collectibles.console }
+      { type: CollectibleType.CONSOLE, points: 100, count: this.levelConfig.collectibles.console },
     ];
 
     const { width, height } = this.cameras.main;
@@ -285,183 +173,35 @@ export class GameScene extends Phaser.Scene {
     types.forEach(({ type, points, count }) => {
       for (let i = 0; i < count; i++) {
         const pos = LevelGenerator.findFreePosition(this.wallSegments, width, height, margin, 25);
-        
-        if (pos) {
-          const collectible = this.collectibles.create(pos.x, pos.y, type);
-          collectible.setData('points', points);
-          collectible.setData('type', type);
-          
-          // Animazione fluttuante
-          this.tweens.add({
-            targets: collectible,
-            y: collectible.y - 5,
-            duration: 1000,
-            yoyo: true,
-            repeat: -1,
-            ease: 'Sine.easeInOut'
-          });
-        }
+        if (!pos) continue;
+
+        const collectible = this.collectibles.create(pos.x, pos.y, type);
+        collectible.setData('points', points);
+        collectible.setData('type', type);
+
+        this.tweens.add({
+          targets: collectible,
+          y: collectible.y - 5,
+          duration: 1000,
+          yoyo: true,
+          repeat: -1,
+          ease: 'Sine.easeInOut',
+        });
       }
     });
 
     this.collectiblesRemaining = this.collectibles.getLength();
   }
 
-  private createEnemies() {
-    this.enemies = this.physics.add.group();
-    
-    const baseSpeed = this.levelConfig.enemySpeedMultiplier;
-    const enemyTypes = [
-      { type: EnemyType.GLITCH, speed: 80 * baseSpeed, count: this.levelConfig.enemies.glitch },
-      { type: EnemyType.BUG, speed: 100 * baseSpeed, count: this.levelConfig.enemies.bug },
-      { type: EnemyType.LAG, speed: 60 * baseSpeed, count: this.levelConfig.enemies.lag },
-      { type: EnemyType.DRM, speed: 40 * baseSpeed, count: this.levelConfig.enemies.drm },
-      { type: EnemyType.HATER, speed: 70 * baseSpeed, count: this.levelConfig.enemies.hater }
-    ];
-
-    const { width, height } = this.cameras.main;
-    const margin = 100;
-
-    enemyTypes.forEach(({ type, speed, count }) => {
-      for (let i = 0; i < count; i++) {
-        const pos = LevelGenerator.findFreePosition(this.wallSegments, width, height, margin, 35);
-        
-        if (pos) {
-          // Verifica distanza dal centro (spawn giocatore)
-          const distFromCenter = Math.sqrt(
-            Math.pow(pos.x - width / 2, 2) + 
-            Math.pow(pos.y - height / 2, 2)
-          );
-          
-          if (distFromCenter > 150) {
-            const enemy = this.enemies.create(pos.x, pos.y, type);
-            enemy.setData('type', type);
-            enemy.setData('speed', speed);
-            
-            // Movimento base
-            if (count > 0) {
-              this.setupEnemyMovement(enemy, type);
-            }
-          }
-        }
-      }
-    });
-  }
-
-  private setupEnemyMovement(enemy: Phaser.Physics.Arcade.Sprite, type: EnemyType) {
-    const speed = enemy.getData('speed');
-
-    switch (type) {
-      case EnemyType.GLITCH:
-        // Movimento prevedibile in pattern
-        this.tweens.add({
-          targets: enemy,
-          x: enemy.x + 100,
-          duration: 2000,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Linear'
-        });
-        break;
-
-      case EnemyType.BUG: {
-        // Insegue il giocatore
-        const bugTimer = this.time.addEvent({
-          delay: 100,
-          callback: () => {
-            if (this.player && enemy.active) {
-              this.physics.moveToObject(enemy, this.player, speed);
-            }
-          },
-          loop: true
-        });
-        this.registerEnemyTimer(enemy, bugTimer);
-        break;
-      }
-
-      case EnemyType.DRM:
-        // Movimento lento e costante
-        this.tweens.add({
-          targets: enemy,
-          x: enemy.x + 50,
-          y: enemy.y + 50,
-          duration: 4000,
-          yoyo: true,
-          repeat: -1,
-          ease: 'Linear'
-        });
-        break;
-
-      case EnemyType.HATER: {
-        // Lancia proiettili periodicamente
-        const haterTimer = this.time.addEvent({
-          delay: 3000,
-          callback: () => {
-            if (enemy.active && this.player) {
-              // Crea un proiettile che rallenta
-              const projectile = this.add.circle(enemy.x, enemy.y, 4, 0xff0000);
-              this.physics.add.existing(projectile);
-              this.physics.moveToObject(projectile, this.player, 150);
-
-              // Collisione proiettile con giocatore
-              this.physics.add.overlap(this.player, projectile, () => {
-                if (!this.isInvincible) {
-                  this.playerSpeed = 80;
-                  this.time.delayedCall(3000, () => {
-                    this.playerSpeed = 160;
-                  });
-                }
-                projectile.destroy();
-              });
-
-              // Distruggi proiettile dopo 5 secondi
-              this.time.delayedCall(5000, () => {
-                if (projectile && projectile.active) projectile.destroy();
-              });
-            }
-          },
-          loop: true
-        });
-        this.registerEnemyTimer(enemy, haterTimer);
-        break;
-      }
-
-      case EnemyType.LAG: {
-        // Movimento a scatti
-        const lagTimer = this.time.addEvent({
-          delay: Phaser.Math.Between(500, 1500),
-          callback: () => {
-            if (enemy.active) {
-              const angle = Phaser.Math.Between(0, 360);
-              const rad = Phaser.Math.DegToRad(angle);
-              enemy.setVelocity(
-                Math.cos(rad) * speed,
-                Math.sin(rad) * speed
-              );
-
-              this.time.delayedCall(Phaser.Math.Between(300, 800), () => {
-                if (enemy.active) enemy.setVelocity(0, 0);
-              });
-            }
-          },
-          loop: true
-        });
-        this.registerEnemyTimer(enemy, lagTimer);
-        break;
-      }
-    }
-  }
-
   private createPowerUps() {
     this.powerUps = this.physics.add.group();
-    
-    // Spawn power-up casuale basato sulla probabilità del livello
+
     if (Math.random() < this.levelConfig.powerUpChance) {
       const types = [PowerUpType.COFFEE, PowerUpType.JOYSTICK, PowerUpType.BUBBLE, PowerUpType.CRT];
       const randomType = Phaser.Utils.Array.GetRandom(types);
       const { width, height } = this.cameras.main;
       const pos = LevelGenerator.findFreePosition(this.wallSegments, width, height, 100, 25);
-      
+
       if (pos) {
         this.spawnPowerUp(randomType, pos.x, pos.y);
       }
@@ -471,14 +211,13 @@ export class GameScene extends Phaser.Scene {
   private spawnPowerUp(type: PowerUpType, x: number, y: number) {
     const powerUp = this.powerUps.create(x, y, `powerup-${type}`);
     powerUp.setData('type', type);
-    
-    // Animazione rotazione
+
     this.tweens.add({
       targets: powerUp,
       angle: 360,
       duration: 2000,
       repeat: -1,
-      ease: 'Linear'
+      ease: 'Linear',
     });
   }
 
@@ -487,81 +226,39 @@ export class GameScene extends Phaser.Scene {
   }
 
   private setupCollisions() {
-    // Collisione giocatore con muri
-    this.physics.add.collider(this.player, this.walls);
-    
-    // Collisione nemici con muri
-    this.physics.add.collider(this.enemies, this.walls);
-    
-    // Collisione con oggetti da collezione
-    this.physics.add.overlap(
-      this.player,
-      this.collectibles,
-      this.collectItem,
-      undefined,
-      this
-    );
+    const playerSprite = this.player.getSprite();
 
-    // Collisione con nemici
+    this.physics.add.collider(playerSprite, this.walls);
+    this.physics.add.collider(this.enemyManager.getGroup(), this.walls);
+
+    this.physics.add.overlap(playerSprite, this.collectibles, this.collectItem, undefined, this);
     this.physics.add.overlap(
-      this.player,
-      this.enemies,
+      playerSprite,
+      this.enemyManager.getGroup(),
       this.hitEnemy,
       undefined,
-      this
+      this,
     );
-
-    // Collisione con power-ups
-    this.physics.add.overlap(
-      this.player,
-      this.powerUps,
-      this.collectPowerUp,
-      undefined,
-      this
-    );
+    this.physics.add.overlap(playerSprite, this.powerUps, this.collectPowerUp, undefined, this);
   }
 
-  private handlePlayerMovement() {
-    if (!this.player || !this.cursors) return;
-
-    this.player.setVelocity(0);
-
-    // Supporto frecce direzionali e WASD
-    if (this.cursors.left.isDown || this.wasd.left.isDown) {
-      this.player.setVelocityX(-this.playerSpeed);
-    } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
-      this.player.setVelocityX(this.playerSpeed);
-    }
-
-    if (this.cursors.up.isDown || this.wasd.up.isDown) {
-      this.player.setVelocityY(-this.playerSpeed);
-    } else if (this.cursors.down.isDown || this.wasd.down.isDown) {
-      this.player.setVelocityY(this.playerSpeed);
-    }
-  }
-
-  private collectItem(
-    _player: ArcadeColliderObject,
-    collectible: ArcadeColliderObject
-  ) {
+  private collectItem(_player: ArcadeColliderObject, collectible: ArcadeColliderObject) {
     const sprite = collectible as Phaser.Physics.Arcade.Sprite;
-    const points = sprite.getData('points');
-    
+    const points = sprite.getData('points') as number;
+
     this.score += points;
     this.hud.setScore(this.score);
 
     this.collectiblesRemaining--;
     this.hud.setCollectiblesRemaining(this.collectiblesRemaining);
-    
+
     sprite.destroy();
-    
     this.soundManager.playCollect();
 
-    // Effetto visivo
     const text = this.add.text(sprite.x, sprite.y, `+${points}`, {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: '16px',
-      color: '#ffff00'
+      color: '#ffff00',
     }).setOrigin(0.5);
 
     this.tweens.add({
@@ -569,21 +266,16 @@ export class GameScene extends Phaser.Scene {
       y: text.y - 30,
       alpha: 0,
       duration: 1000,
-      onComplete: () => text.destroy()
+      onComplete: () => text.destroy(),
     });
 
-    // Verifica completamento livello
     if (this.collectiblesRemaining === 0) {
       this.completeLevel();
     }
   }
 
-  private hitEnemy(
-    _player: ArcadeColliderObject,
-    enemy: ArcadeColliderObject
-  ) {
-    if (this.isInvincible) {
-      // Se invincibile, elimina il nemico
+  private hitEnemy(_player: ArcadeColliderObject, enemy: ArcadeColliderObject) {
+    if (this.player.isInvincible) {
       const sprite = enemy as Phaser.Physics.Arcade.Sprite;
       sprite.destroy();
       this.score += 50;
@@ -592,14 +284,12 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    if (this.hasShield) {
-      // Lo scudo assorbe il colpo
-      this.hasShield = false;
+    if (this.player.hasShield) {
+      this.player.consumeShield();
       this.soundManager.playMenuClick();
       return;
     }
 
-    // Perde una vita
     this.lives--;
     this.soundManager.playHit();
     this.hud.setLives(this.lives);
@@ -607,22 +297,16 @@ export class GameScene extends Phaser.Scene {
     if (this.lives <= 0) {
       this.gameOver();
     } else {
-      // Invincibilità temporanea
-      this.makePlayerInvincible(2000);
-      
-      // Riposiziona il giocatore
+      this.player.makeInvincible(PLAYER_INVINCIBLE_HIT_MS);
       const { width, height } = this.cameras.main;
-      this.player.setPosition(width / 2, height / 2);
+      this.player.resetPosition(width / 2, height / 2);
     }
   }
 
-  private collectPowerUp(
-    _player: ArcadeColliderObject,
-    powerUp: ArcadeColliderObject
-  ) {
+  private collectPowerUp(_player: ArcadeColliderObject, powerUp: ArcadeColliderObject) {
     const sprite = powerUp as Phaser.Physics.Arcade.Sprite;
     const type = sprite.getData('type') as PowerUpType;
-    
+
     sprite.destroy();
     this.soundManager.playPowerUp();
     this.activatePowerUp(type);
@@ -631,58 +315,25 @@ export class GameScene extends Phaser.Scene {
   private activatePowerUp(type: PowerUpType) {
     switch (type) {
       case PowerUpType.COFFEE:
-        // Velocità aumentata
-        this.playerSpeed = 240;
-        this.time.delayedCall(8000, () => {
-          this.playerSpeed = 160;
-        });
+        this.player.applyTemporarySpeed(PLAYER_BOOST_SPEED, PLAYER_BOOST_MS);
         this.showPowerUpMessage('Velocità aumentata!');
         break;
 
       case PowerUpType.JOYSTICK:
-        // Invincibilità
-        this.makePlayerInvincible(10000);
+        this.player.makeInvincible(PLAYER_INVINCIBLE_POWERUP_MS);
         this.showPowerUpMessage('Invincibile!');
         break;
 
       case PowerUpType.BUBBLE:
-        // Scudo
-        this.hasShield = true;
+        this.player.activateShield();
         this.showPowerUpMessage('Scudo attivo!');
         break;
 
       case PowerUpType.CRT:
-        // Stordisce tutti i nemici
-        this.enemies.children.entries.forEach((enemy) => {
-          const sprite = enemy as Phaser.Physics.Arcade.Sprite;
-          sprite.setVelocity(0, 0);
-          sprite.setTint(0x888888);
-          
-          this.time.delayedCall(3000, () => {
-            sprite.clearTint();
-          });
-        });
+        this.enemyManager.stunAll(CRT_STUN_MS);
         this.showPowerUpMessage('Nemici storditi!');
         break;
     }
-  }
-
-  private makePlayerInvincible(duration: number) {
-    this.isInvincible = true;
-    
-    // Effetto lampeggiante
-    this.tweens.add({
-      targets: this.player,
-      alpha: 0.3,
-      duration: 200,
-      yoyo: true,
-      repeat: duration / 400
-    });
-
-    this.time.delayedCall(duration, () => {
-      this.isInvincible = false;
-      this.player.setAlpha(1);
-    });
   }
 
   private showPowerUpMessage(message: string) {
@@ -692,7 +343,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: '32px',
       color: '#ffff00',
       stroke: '#000000',
-      strokeThickness: 4
+      strokeThickness: 4,
     }).setOrigin(0.5);
 
     this.tweens.add({
@@ -700,22 +351,22 @@ export class GameScene extends Phaser.Scene {
       alpha: 0,
       y: text.y - 50,
       duration: 2000,
-      onComplete: () => text.destroy()
+      onComplete: () => text.destroy(),
     });
   }
 
   private completeLevel() {
     const { width, height } = this.cameras.main;
-    
+
     const bonusPoints = this.lives * 100;
     this.score += bonusPoints;
-    
+
     const message = this.add.text(width / 2, height / 2 - 40, 'LIVELLO COMPLETATO!', {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: '48px',
       color: '#00ff00',
       stroke: '#000000',
-      strokeThickness: 6
+      strokeThickness: 6,
     }).setOrigin(0.5);
 
     const bonus = this.add.text(width / 2, height / 2 + 20, `Bonus Vite: +${bonusPoints}`, {
@@ -723,21 +374,23 @@ export class GameScene extends Phaser.Scene {
       fontSize: '24px',
       color: '#ffff00',
       stroke: '#000000',
-      strokeThickness: 3
+      strokeThickness: 3,
     }).setOrigin(0.5);
 
     this.soundManager.playLevelComplete();
-    
+
     this.time.delayedCall(3000, () => {
       message.destroy();
       bonus.destroy();
-      
-      // Verifica se ci sono altri livelli
+
       if (this.level >= 9) {
         this.showVictoryScreen();
       } else {
-        // Usa scene.start invece di scene.restart per evitare problemi
-        this.scene.start('GameScene', { level: this.level + 1, score: this.score, lives: this.lives });
+        this.scene.start('GameScene', {
+          level: this.level + 1,
+          score: this.score,
+          lives: this.lives,
+        });
       }
     });
   }
@@ -751,30 +404,28 @@ export class GameScene extends Phaser.Scene {
 
   private showVictoryScreen() {
     const { width, height } = this.cameras.main;
-    
-    // Overlay scuro
+
     this.add.rectangle(0, 0, width, height, 0x000000, 0.9).setOrigin(0);
-    
-    // Messaggio vittoria
+
     this.add.text(width / 2, height / 3, 'VITTORIA!', {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: '64px',
       color: '#ffd700',
       stroke: '#000000',
-      strokeThickness: 8
+      strokeThickness: 8,
     }).setOrigin(0.5);
 
     this.add.text(width / 2, height / 2, 'Hai salvato la Storia del Videogioco!', {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: '28px',
       color: '#ffffff',
-      align: 'center'
+      align: 'center',
     }).setOrigin(0.5);
 
     this.add.text(width / 2, height / 2 + 50, `Punteggio Finale: ${this.score}`, {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: '32px',
-      color: '#00ff00'
+      color: '#00ff00',
     }).setOrigin(0.5);
 
     const menuButton = this.add.text(width / 2, height * 0.75, 'TORNA AL MENU (SPAZIO)', {
@@ -782,7 +433,7 @@ export class GameScene extends Phaser.Scene {
       fontSize: '24px',
       color: '#ffffff',
       backgroundColor: '#4a90e2',
-      padding: { x: 20, y: 10 }
+      padding: { x: 20, y: 10 },
     }).setOrigin(0.5).setInteractive();
 
     this.input.keyboard?.once('keydown-SPACE', () => {
@@ -802,7 +453,7 @@ export class GameScene extends Phaser.Scene {
       fontFamily: 'Arial Black, sans-serif',
       fontSize: '32px',
       color: '#ffffff',
-      align: 'center'
+      align: 'center',
     }).setOrigin(0.5).setDepth(1001);
 
     // Listener DOM: l'input plugin della scena e' disattivato in pausa, quindi

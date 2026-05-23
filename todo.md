@@ -139,6 +139,7 @@
 - [ ] Feedback visivo collisione muri (opzionale)
 - [x] E2E Playwright (smoke suite chromium, v1.8.0) — sblocca refactor Player/EnemyManager
 - [x] E2E gameplay + debug hook + fix bug pausa P (v1.9.0)
+- [x] Split GameScene in entities/Player.ts + entities/EnemyManager.ts (v2.0.0)
 - [ ] Estendere E2E: scenari specifici (collisione nemico → life-, raccolta oggetto → score+, completamento livello → portale)
 - [ ] Bundle code-splitting (estrarre Phaser in chunk vendor)
 - [ ] Coverage Vitest (`@vitest/coverage-v8`)

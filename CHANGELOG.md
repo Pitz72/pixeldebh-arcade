@@ -5,6 +5,30 @@ Tutti i cambiamenti significativi a questo progetto sono documentati in questo f
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/)
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/).
 
+## [2.0.0] - 2026-05-23
+
+### Changed — Split GameScene (architettura entities)
+
+Major version bump perché cambia la struttura interna del package `game/`. Nessuna modifica al comportamento di runtime: tutta la suite (23 unit + 8 E2E) passa identica a v1.9.0.
+
+- **Nuovo modulo `client/src/game/entities/`**
+  - **`Player.ts`** (~110 righe): incapsula sprite fisico, input (frecce + WASD), velocità, invincibilità, scudo. API: `create()`, `update()`, `getSprite()`, `applyTemporarySpeed()`, `makeInvincible()`, `activateShield()`, `consumeShield()`, getter `x/y/isInvincible/hasShield`, `resetPosition()`. Costante `BASE_SPEED = 160` interna.
+  - **`EnemyManager.ts`** (~225 righe): spawn, movimento (5 tipi: GLITCH, BUG, LAG, DRM, HATER), timer per-nemico con auto-cleanup su `DESTROY`, proiettili HATER, stordimento globale per power-up CRT. API: `create()`, `update(walls)`, `stunAll(duration)`, `getGroup()`, `cleanup()`. Costanti HATER_* esposte in cima al modulo.
+  - Enum `EnemyType` spostato in `EnemyManager.ts` (è di sua proprietà). `CollectibleType` e `PowerUpType` restano in `GameScene.ts` perché orchestrati dalla scena.
+
+- **`GameScene.ts` da 803 → ~370 righe**
+  - Diventa orchestratore: state di gioco (score/lives/level/collectiblesRemaining), HUD, collisioni, transizioni di scena (level complete / game over / victory), pausa.
+  - `getDebugState()` ora delega a `player.x/y/isInvincible/hasShield`.
+  - `cleanupScene()` delega timer-nemici a `enemyManager.cleanup()`; mantiene proprio `activeTimers` + `tweens.killAll()` per timer/tween scene-wide.
+  - Costanti magiche estratte in `const` namespaced (PLAYER_BOOST_*, CRT_STUN_MS, ecc).
+
+- **Comportamento invariato**, verificato da:
+  - 8/8 E2E Chromium (smoke + gameplay): canvas mount, skip intro, movimento player, toggle pausa, debug state iniziale, hook dev-only, localStorage roundtrip.
+  - 23/23 unit (HighScoreManager + LevelData).
+  - Build production identica (1466 kB JS / 410 gzip).
+
+- **Sblocca**: future estensioni isolate (es. nuovi tipi di nemico → solo `EnemyManager`, controlli touch → solo `Player`).
+
 ## [1.9.0] - 2026-05-23
 
 ### Added — E2E gameplay + debug hook dev-only
