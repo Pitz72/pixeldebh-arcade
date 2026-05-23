@@ -138,7 +138,8 @@
 - [ ] Bilanciare spawn power-up
 - [ ] Feedback visivo collisione muri (opzionale)
 - [x] E2E Playwright (smoke suite chromium, v1.8.0) — sblocca refactor Player/EnemyManager
-- [ ] Estendere E2E: scenari gameplay (collisione nemico → life-, raccolta oggetto → score+, completamento livello → portale)
+- [x] E2E gameplay + debug hook + fix bug pausa P (v1.9.0)
+- [ ] Estendere E2E: scenari specifici (collisione nemico → life-, raccolta oggetto → score+, completamento livello → portale)
 - [ ] Bundle code-splitting (estrarre Phaser in chunk vendor)
 - [ ] Coverage Vitest (`@vitest/coverage-v8`)
 - [ ] Server-side high score (richiede auth)
