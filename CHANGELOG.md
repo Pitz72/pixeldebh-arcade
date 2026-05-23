@@ -5,6 +5,31 @@ Tutti i cambiamenti significativi a questo progetto sono documentati in questo f
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/)
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.9.0] - 2026-05-23
+
+### Added — E2E gameplay + debug hook dev-only
+
+- **Hook di debug `window.__pixeldebh`** in `client/src/components/Game.tsx`
+  - Esposto **solo in `import.meta.env.DEV`**: in produzione il `window` resta pulito.
+  - Pulito anche su unmount del componente React.
+  - Punta direttamente all'istanza `Phaser.Game`, da cui si raggiunge la scena attiva.
+
+- **Metodo pubblico `GameScene.getDebugState()`**
+  - Ritorna `{ score, lives, level, collectiblesRemaining, isPaused, isInvincible, hasShield, playerX, playerY }`.
+  - Read-only, non muta nulla. Usato esclusivamente dai test E2E per osservare lo stato del game loop senza fragili assert sul canvas.
+
+- **`e2e/gameplay.spec.ts`** — 4 nuovi test (totale suite: **8/8 in ~7.4s**)
+  - Stato iniziale GameScene: `score=0`, `lives=3`, `level=1`, `collectiblesRemaining>0`, `playerX/Y` valorizzati.
+  - Frecce direzionali muovono il player (delta su `x` o `y` > 1px dopo 800ms di input).
+  - Toggle pausa con tasto P attiva → riattiva lo stato di scena.
+  - In modalità produzione il hook `__pixeldebh` non è presente (regressione guard).
+
+### Fixed — Bug toggle pausa scoperto dai test E2E
+
+- **Problema**: il listener `keydown-P` era registrato sull'input plugin della scena, ma `scene.pause()` disabilita l'input plugin della scena stessa → impossibile ripremere P per riprendere il gioco da tastiera.
+- **Fix**: il listener di scena ora solo *attiva* la pausa; il resume è gestito da un listener DOM `window.addEventListener('keydown', ...)` registrato in `showPauseMenu()` e rimosso sul `resume` event.
+- Bug pre-esistente (presente fin da prima dell'audit) — la prima vera regressione catturata dalla suite E2E aggiunta in v1.8.0. Conferma sperimentale del valore di tenere E2E nel pipeline.
+
 ## [1.8.0] - 2026-05-23
 
 ### Added — E2E Playwright (smoke suite)

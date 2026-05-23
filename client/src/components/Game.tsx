@@ -15,11 +15,19 @@ export function Game() {
       parent: containerRef.current
     });
 
+    // Hook di debug dev-only per test E2E (Playwright). Rimosso nelle build di produzione.
+    if (import.meta.env.DEV) {
+      (window as unknown as { __pixeldebh?: Phaser.Game }).__pixeldebh = gameRef.current;
+    }
+
     // Cleanup quando il componente viene smontato
     return () => {
       if (gameRef.current) {
         gameRef.current.destroy(true);
         gameRef.current = null;
+      }
+      if (import.meta.env.DEV) {
+        delete (window as unknown as { __pixeldebh?: Phaser.Game }).__pixeldebh;
       }
     };
   }, []);

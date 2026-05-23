@@ -69,6 +69,21 @@ export class GameScene extends Phaser.Scene {
     super({ key: 'GameScene' });
   }
 
+  /** Stato osservabile per test E2E. Non usare in runtime di gioco. */
+  public getDebugState() {
+    return {
+      score: this.score,
+      lives: this.lives,
+      level: this.level,
+      collectiblesRemaining: this.collectiblesRemaining,
+      isPaused: this.isPaused,
+      isInvincible: this.isInvincible,
+      hasShield: this.hasShield,
+      playerX: this.player?.x ?? null,
+      playerY: this.player?.y ?? null,
+    };
+  }
+
   preload() {
     // Genera tutti gli sprite del gioco
     SpriteGenerator.generateAll(this);
@@ -123,16 +138,14 @@ export class GameScene extends Phaser.Scene {
     // Collisioni
     this.setupCollisions();
 
-    // Pausa (toggle)
+    // Pausa: il listener di scena attiva la pausa; il resume e' gestito da un
+    // listener DOM dentro showPauseMenu, perche' scene.pause() disabilita
+    // l'input plugin della scena stessa.
     this.input.keyboard?.on('keydown-P', () => {
-      if (this.isPaused) {
-        this.scene.resume();
-        this.isPaused = false;
-      } else {
-        this.scene.pause();
-        this.isPaused = true;
-        this.showPauseMenu();
-      }
+      if (this.isPaused) return;
+      this.scene.pause();
+      this.isPaused = true;
+      this.showPauseMenu();
     });
 
     // Cleanup totale su shutdown della scena: cancella timer e tween per evitare leak
@@ -783,7 +796,7 @@ export class GameScene extends Phaser.Scene {
 
   private showPauseMenu() {
     const { width, height } = this.cameras.main;
-    
+
     const overlay = this.add.rectangle(0, 0, width, height, 0x000000, 0.7).setOrigin(0).setDepth(1000);
     const text = this.add.text(width / 2, height / 2, 'PAUSA\n\nPremi P per continuare', {
       fontFamily: 'Arial Black, sans-serif',
@@ -792,12 +805,22 @@ export class GameScene extends Phaser.Scene {
       align: 'center'
     }).setOrigin(0.5).setDepth(1001);
 
-    // Listener per rimuovere overlay quando si riprende
+    // Listener DOM: l'input plugin della scena e' disattivato in pausa, quindi
+    // intercettiamo P direttamente da window per consentire il resume.
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.code !== 'KeyP') return;
+      window.removeEventListener('keydown', onKey);
+      this.scene.resume();
+      this.isPaused = false;
+    };
+    window.addEventListener('keydown', onKey);
+
     const resumeListener = () => {
       overlay.destroy();
       text.destroy();
+      window.removeEventListener('keydown', onKey);
     };
-    
+
     this.events.once('resume', resumeListener);
   }
 }
