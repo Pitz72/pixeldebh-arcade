@@ -5,6 +5,38 @@ Tutti i cambiamenti significativi a questo progetto sono documentati in questo f
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/)
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/).
 
+## [1.8.0] - 2026-05-23
+
+### Added — E2E Playwright (smoke suite)
+
+- **Setup Playwright su Chromium only**
+  - Nuova devDep `@playwright/test`; browser Chromium scaricato via `playwright install`.
+  - `playwright.config.ts`: `webServer` avvia `pnpm dev` su `http://localhost:3000` (porta reale di Vite, non 5173); `reuseExistingServer` in locale, `retries: 2` in CI.
+  - **Target unico Chromium**: scelta motivata dal fatto che il gioco è destinato a diventare app desktop confezionata con **Tauri** (WebView2 su Windows è Chromium-based). Testare Firefox/WebKit sarebbe lavoro sprecato.
+
+- **Smoke test suite `e2e/smoke.spec.ts`** — 4 test, ~8s totali
+  - Canvas Phaser montato in `#game-container` con dimensioni > 0.
+  - Skip intro con SPACE non genera errori `pageerror` né `console.error`.
+  - Input frecce direzionali (Right/Down/Left/Up) non crasha il game loop.
+  - localStorage `pixeldebh_highscores`: scrittura via `page.evaluate` + reload + rilettura → dati persistono e schema Zod resta valido.
+
+- **Integrazione CI** (`.github/workflows/ci.yml`)
+  - Cache `~/.cache/ms-playwright` su `hashFiles('pnpm-lock.yaml')` per evitare il download dei browser ad ogni run.
+  - `pnpm exec playwright install --with-deps chromium` solo dopo cache miss.
+  - Nuovo step `pnpm test:e2e` in coda alla pipeline (dopo build).
+
+- **Script package.json**
+  - `test:e2e` → `playwright test`
+  - `test:e2e:ui` → `playwright test --ui` (debugging locale)
+
+- **`.gitignore`**
+  - Esclusi `/test-results/`, `/playwright-report/`, `/blob-report/`, `/playwright/.cache/`.
+
+### Notes
+
+- Le E2E **sbloccano il prossimo refactor**: split di `GameScene` (803 righe) in `entities/Player.ts` + `entities/EnemyManager.ts`, finora deferito perché il game loop non aveva smoke test automatico.
+- Nessuna modifica al codice di gioco: i test sono black-box (canvas presence, keyboard input, localStorage roundtrip).
+
 ## [1.7.0] - 2026-05-23
 
 ### Changed — Hygiene release
