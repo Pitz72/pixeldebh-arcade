@@ -5,6 +5,23 @@ Tutti i cambiamenti significativi a questo progetto sono documentati in questo f
 Il formato è basato su [Keep a Changelog](https://keepachangelog.com/it/1.1.0/)
 e questo progetto aderisce al [Semantic Versioning](https://semver.org/lang/it/).
 
+## [2.1.0] - 2026-07-19
+
+### Changed — Nuovo sprite del player (pixel art) + animazioni
+
+Riscrittura completa dello sprite del protagonista con la tecnica "pixel art come dati": matrice di caratteri (una riga = una scanline, un carattere = un pixel via palette), renderizzata deterministicamente in texture. Sostituisce il vecchio disegno a primitive geometriche (`fillCircle`/`fillRect`) in `SpriteGenerator.generatePlayer()`.
+
+- **PixelDebh ridisegnata** (`client/src/game/utils/SpriteGenerator.ts`): ragazza castana con occhi marroni, cuffie rosse, maglietta arancione, pantaloncini blu, scarpe da ginnastica bianche. Box invariato 32×32 → nessun impatto su fisica, collisioni, `Player.ts`.
+- **Nuovo helper generico `fromPixelMatrix(scene, key, pixels, palette)`**: converte una matrice di stringhe in texture. L'allineamento nel box è garantito per costruzione (la texture ha le dimensioni esatte della matrice). Riutilizzabile per nemici, power-up, collezionabili.
+- **4 frame di animazione** (`player`, `player-walk-a`, `player-walk-b`, `player-blink`): tutti condividono le righe 0-22 (testa+busto) e variano solo le 8 righe di gambe/scarpe → **registrazione tra frame garantita per costruzione**, mai disallineamento.
+- **Animazioni in `Player.ts`**:
+  - `player-walk` (4 frame, 10 fps, loop) durante il movimento;
+  - `player-idle` (riposo + blink ogni ~2,5 s, loop) da fermo;
+  - registrate una sola volta con guardia `anims.exists()` per sopravvivere al restart della scena.
+- **Verificato**: `check` + `lint` + 23/23 unit + 8/8 E2E Chromium + build. Cattura in-game conferma la texture `player-walk-b` attiva durante il movimento (verifica oggettiva, non solo visiva).
+
+**Prossimo passo pianificato (non in questa release)**: raddoppio del mondo di gioco a canvas logico 1600×1200 per abilitare sprite 64×64 con più dettaglio. Motivato dal codice: i corridoi del labirinto sono larghi 60px (`LevelGenerator.CORRIDOR_WIDTH`), uno sprite 64px non ci passa — il ridimensionamento del mondo è prerequisito, non opzione. I 9 labirinti usano coordinate assolute → il raddoppio si concentra in `LevelGenerator` (moltiplicatore ×2 sui segmenti) + `config.ts`.
+
 ## [2.0.0] - 2026-05-23
 
 ### Changed — Split GameScene (architettura entities)

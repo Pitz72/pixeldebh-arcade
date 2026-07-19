@@ -25,6 +25,7 @@ export class Player {
   create(x: number, y: number): void {
     this.sprite = this.scene.physics.add.sprite(x, y, 'player');
     this.sprite.setCollideWorldBounds(true);
+    this.createAnimations();
 
     const kb = this.scene.input.keyboard!;
     this.cursors = kb.createCursorKeys();
@@ -36,21 +37,58 @@ export class Player {
     };
   }
 
+  /**
+   * Registra le animazioni del player (manager globale: la guardia evita
+   * la ri-registrazione al restart della scena).
+   */
+  private createAnimations(): void {
+    const anims = this.scene.anims;
+    if (anims.exists('player-walk')) return;
+
+    anims.create({
+      key: 'player-walk',
+      frames: [
+        { key: 'player' },
+        { key: 'player-walk-a' },
+        { key: 'player' },
+        { key: 'player-walk-b' },
+      ],
+      frameRate: 10,
+      repeat: -1,
+    });
+
+    anims.create({
+      key: 'player-idle',
+      frames: [
+        { key: 'player', duration: 2400 },
+        { key: 'player-blink', duration: 120 },
+      ],
+      repeat: -1,
+    });
+  }
+
   update(): void {
     if (!this.sprite || !this.cursors) return;
     this.sprite.setVelocity(0);
 
+    let moving = false;
     if (this.cursors.left.isDown || this.wasd.left.isDown) {
       this.sprite.setVelocityX(-this.speed);
+      moving = true;
     } else if (this.cursors.right.isDown || this.wasd.right.isDown) {
       this.sprite.setVelocityX(this.speed);
+      moving = true;
     }
 
     if (this.cursors.up.isDown || this.wasd.up.isDown) {
       this.sprite.setVelocityY(-this.speed);
+      moving = true;
     } else if (this.cursors.down.isDown || this.wasd.down.isDown) {
       this.sprite.setVelocityY(this.speed);
+      moving = true;
     }
+
+    this.sprite.anims.play(moving ? 'player-walk' : 'player-idle', true);
   }
 
   getSprite(): Phaser.Physics.Arcade.Sprite {

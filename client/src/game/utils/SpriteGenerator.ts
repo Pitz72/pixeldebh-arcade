@@ -2,6 +2,110 @@ import Phaser from 'phaser';
 
 type DrawFn = (g: Phaser.GameObjects.Graphics) => void;
 
+/** Mappa carattere -> colore per gli sprite definiti come matrice di pixel. */
+type PixelPalette = Record<string, number>;
+
+/**
+ * PixelDebh: ragazza castana con occhi marroni, cuffie rosse, maglietta
+ * arancione, pantaloncini blu e scarpe da ginnastica bianche.
+ * Ogni riga e' una scanline di 32 caratteri; '.' = pixel trasparente.
+ *
+ * I frame di animazione condividono le righe 0-22 (testa+busto) e variano
+ * solo le 8 righe di gambe/scarpe: l'allineamento tra frame e' garantito
+ * per costruzione.
+ */
+const PLAYER_PALETTE: PixelPalette = {
+  H: 0x5c4033, // capelli castani
+  h: 0x7a5a42, // capelli, riflesso
+  S: 0xffd4a3, // pelle
+  s: 0xe0ac78, // pelle, ombra
+  E: 0x3a2513, // occhi marroni
+  M: 0xb5654a, // bocca
+  O: 0xff9933, // maglietta arancione
+  o: 0xcc721c, // maglietta, ombra
+  B: 0x3366cc, // pantaloncini blu
+  b: 0x26509e, // pantaloncini, ombra
+  K: 0xf2f2f2, // scarpe bianche
+  k: 0xb8b8b8, // scarpe, suola
+  P: 0xd94f2a, // cuffie
+  p: 0x8f2f16, // cuffie, ombra
+};
+
+/** Righe 0-22: testa e busto, condivise da tutti i frame. */
+const PLAYER_UPPER: readonly string[] = [
+  '................................',
+  '.............PPPPPP.............',
+  '...........PPPPPPPPPP...........',
+  '..........PHHhhHHHHHHP..........',
+  '.........PHHhhHHHHHHHHP.........',
+  '.........PHHHHHHHHHHHHP.........',
+  '........PPHHHHHHHHHHHHPP........',
+  '........PPHSSSSSSSSSSHPP........',
+  '........ppHSSESSSSESSHpp........',
+  '..........HSSESSSSESSH..........',
+  '..........HSSSSMMSSSSH..........',
+  '..........HHSSSSSSSSHH..........',
+  '..........HHsSSSSSSsHH..........',
+  '..........OOOOOOOOOOOO..........',
+  '..........OOOOOOOOOOOO..........',
+  '.........OOOOOOOOOOOOOO.........',
+  '.........OOOOOOOOOOOOOO.........',
+  '.........SSOOOOOOOOOOSS.........',
+  '.........SSOOOOOOOOOOSS.........',
+  '.........ssoOOOOOOOOoss.........',
+  '...........BBBBBBBBBB...........',
+  '...........BBBBBBBBBB...........',
+  '...........BBBBbbBBBB...........',
+];
+
+/** Righe 23-30: gambe in appoggio (frame di riposo). */
+const PLAYER_LEGS_STAND: readonly string[] = [
+  '...........BBBB..BBBB...........',
+  '............SSS..SSS............',
+  '............SSS..SSS............',
+  '............SSS..SSS............',
+  '............sss..sss............',
+  '............KKK..KKK............',
+  '...........KKKK..KKKK...........',
+  '...........kkkk..kkkk...........',
+];
+
+/** Passo con gamba sinistra sollevata. */
+const PLAYER_LEGS_WALK_A: readonly string[] = [
+  '...........BBBB..BBBB...........',
+  '............SSS..SSS............',
+  '............sss..SSS............',
+  '............KKK..SSS............',
+  '...........KKKK..sss............',
+  '...........kkkk..KKK............',
+  '.................KKKK...........',
+  '.................kkkk...........',
+];
+
+/** Passo con gamba destra sollevata (speculare al precedente). */
+const PLAYER_LEGS_WALK_B: readonly string[] = [
+  '...........BBBB..BBBB...........',
+  '............SSS..SSS............',
+  '............SSS..sss............',
+  '............SSS..KKK............',
+  '............sss..KKKK...........',
+  '............KKK..kkkk...........',
+  '...........KKKK.................',
+  '...........kkkk.................',
+];
+
+const PLAYER_EMPTY_ROW = '................................';
+
+/** Compone un frame 32x32: busto condiviso + variante gambe (+ blink). */
+function playerFrame(legs: readonly string[], blink: boolean): string[] {
+  const upper = blink
+    ? PLAYER_UPPER.map((row, i) =>
+        i === 8 || i === 9 ? row.replace(/E/g, i === 8 ? 'S' : 's') : row
+      )
+    : [...PLAYER_UPPER];
+  return [...upper, ...legs, PLAYER_EMPTY_ROW];
+}
+
 export class SpriteGenerator {
   /**
    * Helper: crea un Graphics temporaneo, esegue `draw`, genera la texture
@@ -22,72 +126,40 @@ export class SpriteGenerator {
   }
 
   /**
-   * Genera lo sprite di PixelDebh (protagonista)
+   * Helper: genera una texture da una matrice di pixel (una stringa per
+   * scanline, carattere -> colore via palette, '.' o carattere ignoto =
+   * trasparente). L'allineamento nel box e' garantito per costruzione:
+   * la texture ha esattamente le dimensioni della matrice.
+   */
+  private static fromPixelMatrix(
+    scene: Phaser.Scene,
+    key: string,
+    pixels: readonly string[],
+    palette: PixelPalette
+  ): void {
+    const height = pixels.length;
+    const width = pixels[0]?.length ?? 0;
+    this.withTexture(scene, key, width, height, (g) => {
+      pixels.forEach((row, y) => {
+        for (let x = 0; x < row.length; x++) {
+          const color = palette[row[x]];
+          if (color === undefined) continue;
+          g.fillStyle(color, 1);
+          g.fillRect(x, y, 1, 1);
+        }
+      });
+    });
+  }
+
+  /**
+   * Genera le texture di PixelDebh (protagonista): frame di riposo,
+   * due frame di camminata e blink. Tutte 32x32 con lo stesso ancoraggio.
    */
   static generatePlayer(scene: Phaser.Scene): void {
-    this.withTexture(scene, 'player', 32, 32, (g) => {
-      // Corpo (maglietta arancione)
-      g.fillStyle(0xff9933, 1);
-      g.fillRect(10, 16, 12, 10);
-      g.fillCircle(16, 20, 7);
-
-      // Braccia
-      g.fillStyle(0xffd4a3, 1);
-      g.fillRect(8, 18, 3, 6);
-      g.fillRect(21, 18, 3, 6);
-
-      // Testa (pelle)
-      g.fillStyle(0xffd4a3, 1);
-      g.fillCircle(16, 11, 7);
-
-      // Capelli (marrone scuro con dettagli)
-      g.fillStyle(0x5c4033, 1);
-      g.fillRect(10, 5, 12, 7);
-      g.fillCircle(13, 5, 3);
-      g.fillCircle(19, 5, 3);
-
-      // Occhi
-      g.fillStyle(0xffffff, 1);
-      g.fillCircle(13, 11, 2);
-      g.fillCircle(19, 11, 2);
-      g.fillStyle(0x2d4a3e, 1);
-      g.fillCircle(13, 11, 1.5);
-      g.fillCircle(19, 11, 1.5);
-
-      // Sopracciglia
-      g.lineStyle(1, 0x5c4033);
-      g.lineBetween(11, 9, 14, 9);
-      g.lineBetween(18, 9, 21, 9);
-
-      // Bocca sorridente
-      g.lineStyle(1, 0x2d4a3e);
-      g.arc(16, 13, 3, 0.3, 2.8);
-
-      // Cuffie
-      g.fillStyle(0xd94f2a, 1);
-      g.fillCircle(8, 11, 4);
-      g.fillCircle(24, 11, 4);
-      g.lineStyle(2, 0xd94f2a);
-      g.arc(16, 11, 9, Math.PI, 0, true);
-      g.fillStyle(0x000000, 1);
-      g.fillCircle(8, 11, 2);
-      g.fillCircle(24, 11, 2);
-
-      // Controller
-      g.fillStyle(0x4a4a4a, 1);
-      g.fillRect(11, 24, 10, 5);
-      g.fillStyle(0x6a6a6a, 1);
-      g.fillRect(12, 25, 8, 3);
-      g.fillStyle(0xff0000, 1);
-      g.fillCircle(14, 26, 1);
-      g.fillStyle(0x00ff00, 1);
-      g.fillCircle(18, 26, 1);
-
-      // Gambe/piedi
-      g.fillStyle(0x4a4a4a, 1);
-      g.fillRect(12, 26, 3, 4);
-      g.fillRect(17, 26, 3, 4);
-    });
+    this.fromPixelMatrix(scene, 'player', playerFrame(PLAYER_LEGS_STAND, false), PLAYER_PALETTE);
+    this.fromPixelMatrix(scene, 'player-walk-a', playerFrame(PLAYER_LEGS_WALK_A, false), PLAYER_PALETTE);
+    this.fromPixelMatrix(scene, 'player-walk-b', playerFrame(PLAYER_LEGS_WALK_B, false), PLAYER_PALETTE);
+    this.fromPixelMatrix(scene, 'player-blink', playerFrame(PLAYER_LEGS_STAND, true), PLAYER_PALETTE);
   }
 
   /**
